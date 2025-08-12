@@ -123,36 +123,17 @@ namespace HydroLink.Services
 
         public async Task<decimal> ObtenerMargenGananciaProductoAsync(int productoId)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            // Para evitar el problema de recálculo circular, usar un margen fijo configurado
+            // El margen se puede obtener de una configuración o usar uno estándar
             
-            var producto = await context.ProductoHydroLink
-                .Include(p => p.ComponentesRequeridos)
-                .FirstOrDefaultAsync(p => p.Id == productoId);
-
-            if (producto == null)
-                return 0.30m; // Margen por defecto del 30%
-
-            // Calcular el costo actual de todos los componentes
-            decimal costoTotal = 0;
-            foreach (var componenteRequerido in producto.ComponentesRequeridos)
-            {
-                var costoComponente = await _costoPromedioService.CalcularCostoPromedioComponenteAsync(componenteRequerido.ComponenteId);
-                costoTotal += costoComponente * componenteRequerido.Cantidad;
-            }
-
-            // Calcular el margen basado en la diferencia entre precio y costo
-            if (costoTotal > 0)
-            {
-                var ganancia = producto.Precio - costoTotal;
-                var margen = ganancia / costoTotal;
-                
-                _logger.LogInformation("Producto {ProductoId}: Costo=${CostoTotal:F2}, Precio=${Precio:F2}, Margen={Margen:P2}", 
-                    productoId, costoTotal, producto.Precio, margen);
-                
-                return margen;
-            }
-
-            return 0.30m; // Margen por defecto si no hay costo calculable
+            // Por ahora, usamos un margen fijo del 35% que se configuró previamente
+            // En el futuro, esto podría venir de una tabla de configuración por producto
+            var margenFijo = 0.35m; // 35% de margen
+            
+            _logger.LogInformation("Usando margen fijo de {Margen:P2} para producto {ProductoId}", 
+                margenFijo, productoId);
+            
+            return margenFijo;
         }
     }
 }

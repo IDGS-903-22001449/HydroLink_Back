@@ -42,13 +42,11 @@ namespace HydroLink.Services
         
         public async Task<decimal> CalcularCostoPromedioMateriaPrimaAsync(int materiaPrimaId)
         {
-            // Obtener todos los lotes disponibles ordenados por fecha (FIFO)
-            var lotes = await _context.LoteInventario
-                .Where(l => l.MateriaPrimaId == materiaPrimaId && l.CantidadDisponible > 0)
-                .OrderBy(l => l.FechaIngreso)
-                .ToListAsync();
-                
-            if (!lotes.Any())
+            // Obtener el costo promedio directamente de la tabla MateriaPrima
+            // que se actualiza automáticamente en ComprasController
+            var materiaPrima = await _context.MateriaPrima.FindAsync(materiaPrimaId);
+            
+            if (materiaPrima == null || materiaPrima.CostoUnitario == 0)
             {
                 // Fallback: obtener el costo de las últimas compras
                 var ultimaCompra = await _context.CompraDetalle
@@ -59,17 +57,7 @@ namespace HydroLink.Services
                 return ultimaCompra?.PrecioUnitario ?? 0;
             }
             
-            // Calcular promedio ponderado
-            decimal costoTotalPonderado = 0;
-            int cantidadTotal = 0;
-            
-            foreach (var lote in lotes)
-            {
-                costoTotalPonderado += lote.CostoUnitario * lote.CantidadDisponible;
-                cantidadTotal += lote.CantidadDisponible;
-            }
-            
-            return cantidadTotal > 0 ? costoTotalPonderado / cantidadTotal : 0;
+            return materiaPrima.CostoUnitario;
         }
         
         public async Task<Dictionary<int, decimal>> CalcularCostosMultiplesComponentesAsync(List<int> componenteIds)
