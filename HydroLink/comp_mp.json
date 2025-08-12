@@ -1,0 +1,8 @@
+﻿{
+  "materiaPrimaId": 4,
+  "cantidadNecesaria": 1.0,
+  "factorConversion": 1.0,
+  "porcentajeMerma": 0.05,
+  "esPrincipal": true,
+  "notas": "Tubería principal del componente"
+}

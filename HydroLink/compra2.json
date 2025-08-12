@@ -1,0 +1,13 @@
+﻿{
+  "proveedorId": 4,
+  "fecha": "2025-08-07T17:16:00Z",
+  "total": 550.00,
+  "detalles": [
+    {
+      "materiaPrimaId": 6,
+      "cantidad": 5,
+      "precioUnitario": 110.00,
+      "subtotal": 550.00
+    }
+  ]
+}

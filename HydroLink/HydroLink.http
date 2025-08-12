@@ -1,0 +1,6 @@
+@HydroLink_HostAddress = http://localhost:5278
+
+GET {{HydroLink_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

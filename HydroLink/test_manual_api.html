@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Manual Usuario API</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Test Manual Usuario API</h1>
+    <button onclick="testLogin()">1. Login</button>
+    <button onclick="testRegisterPurchase()">2. Register Purchase</button>
+    <button onclick="testGetProducts()">3. Get My Products</button>
+    
+    <div id="output"></div>
+
+    <script>
+        let token = null;
+        const API_BASE = 'http://localhost:5000/api';
+        
+        function log(message) {
+            document.getElementById('output').innerHTML += '<p>' + JSON.stringify(message, null, 2) + '</p>';
+        }
+        
+        async function testLogin() {
+            try {
+                const response = await axios.post(API_BASE + '/Account/Login', {
+                    email: 'vicente@gmail.com',
+                    password: 'Password123!'
+                });
+                
+                token = response.data.jWToken;
+                log('Login successful: ' + token.substring(0, 50) + '...');
+                
+                // Set default header
+                axios.defaults.headers.common['Authorization'] = 'Bearer ' + token;
+            } catch (error) {
+                log('Login error: ' + error.message);
+            }
+        }
+        
+        async function testRegisterPurchase() {
+            if (!token) {
+                log('Please login first');
+                return;
+            }
+            
+            try {
+                // First get a product ID
+                const productsResponse = await axios.get(API_BASE + '/Productos');
+                const products = productsResponse.data;
+                
+                if (products.length > 0) {
+                    const productId = products[0].id;
+                    log('Using product ID: ' + productId);
+                    
+                    // Register purchase
+                    const response = await axios.post(API_BASE + '/ManualUsuario/registrar-compra', {
+                        productoId: productId
+                    });
+                    
+                    log('Purchase registered: ' + response.data);
+                } else {
+                    log('No products found');
+                }
+            } catch (error) {
+                log('Register purchase error: ' + error.response?.data || error.message);
+            }
+        }
+        
+        async function testGetProducts() {
+            if (!token) {
+                log('Please login first');
+                return;
+            }
+            
+            try {
+                const response = await axios.get(API_BASE + '/ManualUsuario/mis-productos');
+                log('My products: ' + response.data);
+            } catch (error) {
+                log('Get products error: ' + error.response?.data || error.message);
+            }
+        }
+    </script>
+</body>
+</html>
