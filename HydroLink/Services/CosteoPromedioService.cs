@@ -118,7 +118,6 @@ namespace HydroLink.Services
             decimal costoTotal = 0;
             foreach (var componenteRequerido in producto.ComponentesRequeridos)
             {
-                // Calcular el costo del componente basado en sus materias primas
                 decimal costoComponente = 0;
                 
                 if (componenteRequerido.Componente?.MateriaPrimas != null)

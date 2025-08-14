@@ -13,7 +13,6 @@ namespace HydroLink.Models
         
         public bool Activo { get; set; } = true;
         
-        // Navegación
         public virtual ICollection<Venta> Ventas { get; set; } = new List<Venta>();
     }
 }

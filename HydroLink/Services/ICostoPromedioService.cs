@@ -4,29 +4,14 @@ namespace HydroLink.Services
 {
     public interface ICostoPromedioService
     {
-        /// <summary>
-        /// Calcula el costo promedio ponderado de un componente basado en sus materias primas
-        /// </summary>
         Task<decimal> CalcularCostoPromedioComponenteAsync(int componenteId);
         
-        /// <summary>
-        /// Calcula el costo promedio ponderado de una materia prima usando método FIFO/Promedio
-        /// </summary>
         Task<decimal> CalcularCostoPromedioMateriaPrimaAsync(int materiaPrimaId);
         
-        /// <summary>
-        /// Calcula múltiples costos de componentes de manera eficiente
-        /// </summary>
         Task<Dictionary<int, decimal>> CalcularCostosMultiplesComponentesAsync(List<int> componenteIds);
         
-        /// <summary>
-        /// Calcula el precio de venta de un producto HydroLink basado en sus componentes
-        /// </summary>
         Task<decimal> CalcularPrecioProductoHydroLinkAsync(int productoId, decimal margenGanancia = 0.30m);
         
-        /// <summary>
-        /// Obtiene información detallada del costo de un componente
-        /// </summary>
         Task<ComponenteCostoDetalleDto> ObtenerDetalleCostoComponenteAsync(int componenteId);
     }
     

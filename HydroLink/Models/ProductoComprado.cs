@@ -17,8 +17,6 @@ namespace HydroLink.Models
         public DateTime FechaCompra { get; set; } = DateTime.UtcNow;
 
         public int? VentaId { get; set; }
-
-        // Navegación
         public virtual AppUser Usuario { get; set; } = null!;
         public virtual ProductoHydroLink Producto { get; set; } = null!;
         public virtual Venta? Venta { get; set; }

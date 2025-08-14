@@ -14,8 +14,8 @@ using Microsoft.AspNetCore.Authorization;
 namespace HydroLink.Controllers
 {
     [Route("api/[controller]")]
-[Authorize]
-[ApiController]
+    [Authorize]
+    [ApiController]
     public class ComprasController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -35,7 +35,7 @@ namespace HydroLink.Controllers
             _contextFactory = contextFactory;
         }
 
-// GET: api/Compras
+        // GET: api/Compras
         [HttpGet]
         public async Task<ActionResult<IEnumerable<DetalleCompraDto>>> GetCompras()
         {
@@ -121,13 +121,12 @@ namespace HydroLink.Controllers
             }
         }
 
-// POST: api/Compras
+        // POST: api/Compras
         [HttpPost]
-public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto compraDto)
-    {
-        // Timeout reducido y transacción optimizada
+        public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto compraDto)
+        {
         using var transaction = await _context.Database.BeginTransactionAsync();
-        _context.Database.SetCommandTimeout(60); // Reducido a 1 minuto
+        _context.Database.SetCommandTimeout(60);
 
         try
         {
@@ -136,27 +135,23 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
                 return BadRequest("La compra debe tener al menos un detalle.");
             }
 
-            // Cargar proveedor
             var proveedor = await _context.Proveedor.FindAsync(compraDto.ProveedorId);
             if (proveedor == null)
             {
                 return BadRequest("Proveedor no válido.");
             }
 
-            // PRE-CARGAR todas las materias primas de una vez para evitar queries múltiples
             var materiasPrimaIds = compraDto.Detalles.Select(d => d.MateriaPrimaId).ToList();
             var materiasDict = await _context.MateriaPrima
                 .Where(mp => materiasPrimaIds.Contains(mp.Id))
                 .ToDictionaryAsync(mp => mp.Id, mp => mp);
 
-            // Validar que todas las materias primas existen
             var materiasNoEncontradas = materiasPrimaIds.Where(id => !materiasDict.ContainsKey(id)).ToList();
             if (materiasNoEncontradas.Any())
             {
                 return BadRequest($"Materias primas no encontradas: {string.Join(", ", materiasNoEncontradas)}");
             }
 
-            // Crear la compra principal
             var compra = new Compra
             {
                 Fecha = DateTime.UtcNow,
@@ -166,7 +161,6 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
             _context.Compra.Add(compra);
             await _context.SaveChangesAsync();
 
-            // Procesar todos los detalles de forma optimizada
             var materiasActualizadas = new List<(int Id, decimal NuevoStock, decimal NuevoCosto)>();
             var lotesInventario = new List<LoteInventario>();
             
@@ -195,7 +189,6 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
 
                 compra.Detalles.Add(detalle);
 
-                // Crear lote de inventario (se agregará en lote después)
                 var loteInventario = new LoteInventario
                 {
                     MateriaPrimaId = detalle.MateriaPrimaId,
@@ -211,25 +204,20 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
                 };
                 lotesInventario.Add(loteInventario);
 
-                // Guardar para actualización posterior de precios
                 if (Math.Abs(costoAnterior - nuevoCostoPromedio) > 0.01m)
                 {
                     materiasActualizadas.Add((materia.Id, nuevoStock, nuevoCostoPromedio));
                 }
             }
 
-            // Agregar todos los lotes de inventario de una vez
             _context.LoteInventario.AddRange(lotesInventario);
 
-            // Guardar todos los cambios de una vez
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
             _logger.LogInformation("Compra {CompraId} procesada exitosamente con {DetallesCount} detalles", 
                 compra.Id, compra.Detalles.Count);
 
-            // ACTUALIZACIÓN SÍNCRONA DE PRECIOS - EJECUTAR INMEDIATAMENTE
-            // Esto asegura que los precios estén actualizados cuando termine la operación de compra
             try
             {
                 foreach (var (materiaPrimaId, _, nuevoCosto) in materiasActualizadas)
@@ -246,10 +234,8 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error crítico en actualización síncrona de precios para compra {CompraId}", compra.Id);
-                // No fallar la operación completa, pero registrar el error
             }
 
-            // GENERAR movimientos de componentes también en background
             _ = Task.Run(async () =>
             {
                 try
@@ -267,7 +253,6 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
                 }
             });
 
-            // Retornar DTO para evitar ciclos de referencia
             var compraCreada = new DetalleCompraDto
             {
                 Id = compra.Id,
@@ -298,11 +283,6 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
     }
 
 
-        /// <summary>
-        /// Obtiene compras filtradas por proveedor
-        /// </summary>
-        /// <param name="proveedorId">ID del proveedor</param>
-        /// <returns>Lista de compras del proveedor especificado</returns>
         [HttpGet("proveedor/{proveedorId}")]
         public async Task<ActionResult<IEnumerable<DetalleCompraDto>>> GetComprasPorProveedor(int proveedorId)
         {
@@ -350,12 +330,6 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
             }
         }
 
-        /// <summary>
-        /// Obtiene compras filtradas por rango de fechas
-        /// </summary>
-        /// <param name="fechaInicio">Fecha de inicio</param>
-        /// <param name="fechaFin">Fecha de fin</param>
-        /// <returns>Lista de compras en el rango especificado</returns>
         [HttpGet("fecha")]
         public async Task<ActionResult<IEnumerable<DetalleCompraDto>>> GetComprasPorFecha(
             [FromQuery] DateTime fechaInicio, 
@@ -395,10 +369,6 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
             }
         }
 
-        /// <summary>
-        /// Obtiene estadísticas de compras
-        /// </summary>
-        /// <returns>Estadísticas generales de compras</returns>
         [HttpGet("estadisticas")]
         public async Task<ActionResult<object>> GetEstadisticasCompras()
         {
@@ -442,9 +412,6 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
         }
 
 
-
-        // PUT: api/Compras/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<ActionResult<DetalleCompraDto>> EditarCompra(int id, CompraCreateDto compraDto)
         {
@@ -452,13 +419,11 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
 
             try
             {
-                // Validaciones iniciales
                 if (compraDto == null || compraDto.Detalles == null || !compraDto.Detalles.Any())
                 {
                     return BadRequest("La compra debe tener al menos un detalle.");
                 }
 
-                // Verificar que la compra existe
                 var compraExistente = await _context.Compra
                     .Include(c => c.Detalles)
                         .ThenInclude(d => d.MateriaPrima)
@@ -470,20 +435,17 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
                     return NotFound(new { message = $"Compra con ID {id} no encontrada" });
                 }
 
-                // Verificar que el proveedor existe
                 var proveedor = await _context.Proveedor.FindAsync(compraDto.ProveedorId);
                 if (proveedor == null)
                 {
                     return BadRequest("Proveedor no válido.");
                 }
 
-                // Revertir el inventario de los detalles anteriores
                 foreach (var detalleAnterior in compraExistente.Detalles)
                 {
                     var materia = detalleAnterior.MateriaPrima;
                     if (materia != null)
                     {
-                        // Registrar movimiento de salida por reversión de edición
                         var movimientoReversion = new MovimientoInventario
                         {
                             MateriaPrimaId = materia.Id,
@@ -498,11 +460,7 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
                             Observaciones = $"Reversión por edición de compra #{id}"
                         };
                         _context.MovimientoInventario.Add(movimientoReversion);
-
-                        // Revertir la cantidad agregada anteriormente
                         materia.Stock -= detalleAnterior.Cantidad;
-                        
-                        // Recalcular el costo promedio (esto es una aproximación)
                         if (materia.Stock > 0)
                         {
                             var valorTotalAnterior = (materia.Stock + detalleAnterior.Cantidad) * materia.CostoUnitario;
@@ -517,15 +475,10 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
                     }
                 }
 
-                // Eliminar los detalles anteriores
                 _context.CompraDetalle.RemoveRange(compraExistente.Detalles);
                 compraExistente.Detalles.Clear();
-
-                // Actualizar información básica de la compra
                 compraExistente.ProveedorId = compraDto.ProveedorId;
                 compraExistente.Fecha = DateTime.UtcNow;
-
-                // Agregar los nuevos detalles y actualizar inventario
                 foreach (var detalleDto in compraDto.Detalles)
                 {
                     var materiaPrima = await _context.MateriaPrima.FindAsync(detalleDto.MateriaPrimaId);
@@ -534,8 +487,6 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
                         await transaction.RollbackAsync();
                         return BadRequest($"La materia prima con ID {detalleDto.MateriaPrimaId} no existe.");
                     }
-
-                    // Calcular nuevo stock y costo promedio
                     var stockAnterior = materiaPrima.Stock;
                     var costoAnterior = materiaPrima.CostoUnitario;
                     var cantidadNueva = detalleDto.Cantidad;
@@ -548,8 +499,6 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
 
                     materiaPrima.Stock = nuevoStock;
                     materiaPrima.CostoUnitario = nuevoCostoPromedio;
-
-                    // Crear nuevo detalle
                     var nuevoDetalle = new CompraDetalle
                     {
                         CompraId = id,
@@ -559,8 +508,6 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
                     };
 
                     compraExistente.Detalles.Add(nuevoDetalle);
-
-                    // Registrar movimiento de entrada por nueva compra editada
                     var movimientoEntrada = new MovimientoInventario
                     {
                         MateriaPrimaId = materiaPrima.Id,
@@ -579,8 +526,6 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
-
-                // Retornar la compra actualizada
                 var compraActualizada = new DetalleCompraDto
                 {
                     Id = compraExistente.Id,
@@ -627,20 +572,11 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
             return NoContent();
         }
 
-        /// <summary>
-        /// Genera automáticamente entradas de inventario de componentes cuando se compra una materia prima
-        /// </summary>
-        /// <param name="materiaPrimaId">ID de la materia prima comprada</param>
-        /// <param name="cantidadComprada">Cantidad de materia prima comprada</param>
-        /// <param name="costoUnitario">Costo unitario de la materia prima</param>
         private async Task GenerarMovimientosComponentesParaMateriaPrima(int materiaPrimaId, decimal cantidadComprada, decimal costoUnitario)
         {
             try
             {
-                // Usar un contexto independiente para operaciones en background
                 using var context = _contextFactory.CreateDbContext();
-                
-                // Obtener todos los componentes que usan esta materia prima
                 var componentesQueUsanMateria = await context.ComponenteMateriaPrima
                     .Where(cm => cm.MateriaPrimaId == materiaPrimaId && cm.Activo)
                     .Include(cm => cm.Componente)
@@ -648,15 +584,10 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
 
                 foreach (var componenteMateria in componentesQueUsanMateria)
                 {
-                    // Calcular cuántas unidades del componente se pueden producir con la cantidad comprada
-                    var unidadesComponenteProducibles = cantidadComprada / componenteMateria.CantidadConMerma;
-                    
+                    var unidadesComponenteProducibles = cantidadComprada / componenteMateria.CantidadConMerma;   
                     if (unidadesComponenteProducibles > 0)
                     {
-                        // Calcular el costo del componente basado en el costo de la materia prima
                         var costoComponente = componenteMateria.CantidadConMerma * costoUnitario;
-                        
-                        // Crear movimiento de entrada para el componente
                         var movimientoComponente = new MovimientoComponente
                         {
                             ComponenteId = componenteMateria.ComponenteId,
@@ -680,14 +611,11 @@ public async Task<ActionResult<DetalleCompraDto>> NuevaCompra(CompraCreateDto co
                         );
                     }
                 }
-                
-                // Guardar los cambios en el contexto independiente
                 await context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al generar movimientos de componentes para materia prima {MateriaPrimaId}", materiaPrimaId);
-                // No lanzamos la excepción para que no interrumpa el proceso de compra principal
             }
         }
     }

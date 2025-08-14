@@ -30,7 +30,6 @@ namespace HydroLink.Models
         public int? UsuarioId { get; set; }
         public Usuario Usuario { get; set; }
 
-        // Nuevas propiedades para el sistema simplificado
         public int ClienteId { get; set; }
         public Cliente Cliente { get; set; } = null!;
         
@@ -51,12 +50,12 @@ namespace HydroLink.Models
         [Required]
         public decimal TotalEstimado { get; set; }
 
-        public decimal PorcentajeGanancia { get; set; } = 20.0m; // 20% por defecto
+        public decimal PorcentajeGanancia { get; set; } = 20.0m; 
 
         public decimal MontoGanancia { get; set; }
 
         [MaxLength(20)]
-        public string Estado { get; set; } = "BORRADOR"; // BORRADOR, ENVIADA, APROBADA, RECHAZADA
+        public string Estado { get; set; } = "BORRADOR"; 
 
         public DateTime? FechaVencimiento { get; set; }
 
@@ -66,7 +65,6 @@ namespace HydroLink.Models
 
         public DateTime? FechaActualizacion { get; set; }
         
-        // Relación con Venta (una cotización puede generar una venta)
         public int? VentaId { get; set; }
         public virtual Venta? Venta { get; set; }
     }

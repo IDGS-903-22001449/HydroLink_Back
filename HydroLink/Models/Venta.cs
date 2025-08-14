@@ -31,11 +31,9 @@ namespace HydroLink.Models
         [StringLength(500)]
         public string Observaciones { get; set; } = string.Empty;
 
-        // Relación con Cotización (una venta puede provenir de una cotización)
         public int? CotizacionId { get; set; }
         public virtual Cotizacion? Cotizacion { get; set; }
         
-        // Navegación
         public virtual Persona Cliente { get; set; } = null!;
         public virtual ProductoHydroLink Producto { get; set; } = null!;
     }

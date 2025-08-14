@@ -21,10 +21,6 @@ namespace HydroLink.Controllers
             _inventarioService = inventarioService;
             _context = context;
         }
-
-        /// <summary>
-        /// Procesar una compra con información de pago (simulado)
-        /// </summary>
         [HttpPost("process")]
         public async Task<IActionResult> ProcessPurchase([FromBody] PurchaseProcessRequest request)
         {
@@ -32,14 +28,12 @@ namespace HydroLink.Controllers
             
             try
             {
-                // Validar datos básicos
                 if (request == null || request.Pedido == null)
                 {
                     _logger.LogError("Datos de compra inválidos: request o Pedido es null");
                     return BadRequest(new { mensaje = "Datos de compra inválidos" });
                 }
                 
-                // Validaciones rápidas antes de interacción con BD
                 if (string.IsNullOrEmpty(request.Tarjeta?.NumeroTarjeta) || request.Tarjeta.NumeroTarjeta.Length < 13)
                 {
                     return BadRequest(new { mensaje = "Número de tarjeta inválido" });
@@ -52,27 +46,18 @@ namespace HydroLink.Controllers
 
                 _logger.LogInformation($"Procesando compra para producto ID: {request.Pedido.ProductoId}, Email: {request.Cliente.Email}");
 
-                // Transacción con timeout optimizado
-                _context.Database.SetCommandTimeout(30); // 30 segundos máximo
+                _context.Database.SetCommandTimeout(30); 
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
-                    // OPTIMIZACIÓN: Cargar producto y usuario en paralelo
-                    var productoTask = _context.ProductoHydroLink
+                    var producto = await _context.ProductoHydroLink
                         .FirstOrDefaultAsync(p => p.Id == request.Pedido.ProductoId && p.Activo);
                     
-                    var usuarioTask = _context.Users
+                    var usuario = await _context.Users
                         .FirstOrDefaultAsync(u => u.Email == request.Cliente.Email);
                     
-                    var clienteTask = _context.Persona.OfType<Cliente>()
+                    var cliente = await _context.Persona.OfType<Cliente>()
                         .FirstOrDefaultAsync(c => c.Email == request.Cliente.Email);
-
-                    // Esperar todas las consultas en paralelo
-                    await Task.WhenAll(productoTask, usuarioTask, clienteTask);
-                    
-                    var producto = productoTask.Result;
-                    var usuario = usuarioTask.Result;
-                    var cliente = clienteTask.Result;
                     
                     if (producto == null)
                     {
@@ -82,7 +67,6 @@ namespace HydroLink.Controllers
                     
                     _logger.LogInformation($"Producto: {producto.Nombre}, PDF: {!string.IsNullOrEmpty(producto.ManualUsuarioPdf)}");
 
-                    // Crear cliente si no existe
                     if (cliente == null)
                     {
                         _logger.LogInformation("Creando nuevo cliente");
@@ -95,7 +79,7 @@ namespace HydroLink.Controllers
                             Direccion = request.Cliente.Direccion
                         };
                         _context.Persona.Add(cliente);
-                        await _context.SaveChangesAsync(); // Necesario para obtener el ID
+                        await _context.SaveChangesAsync();
                         _logger.LogInformation($"Cliente creado con ID: {cliente.Id}");
                     }
                     else
@@ -103,7 +87,6 @@ namespace HydroLink.Controllers
                         _logger.LogInformation($"Cliente existente encontrado con ID: {cliente.Id}");
                     }
 
-                    // Crear la venta
                     var venta = new Venta
                     {
                         ClienteId = cliente.Id,
@@ -118,10 +101,10 @@ namespace HydroLink.Controllers
                     
                     _context.Venta.Add(venta);
 
-                    // Registrar compra para PDF si el usuario existe
+                    await _context.SaveChangesAsync();
+                    
                     if (usuario != null)
                     {
-                        // Verificar si ya existe la compra
                         var compraExistente = await _context.ProductoComprado
                             .AnyAsync(pc => pc.UserId == usuario.Id && pc.ProductoId == request.Pedido.ProductoId);
                         
@@ -132,34 +115,17 @@ namespace HydroLink.Controllers
                                 UserId = usuario.Id,
                                 ProductoId = request.Pedido.ProductoId,
                                 FechaCompra = DateTime.UtcNow,
-                                VentaId = 0 // Se actualizará después de SaveChanges
+                                VentaId = venta.Id 
                             };
                             _context.ProductoComprado.Add(nuevaCompra);
-                        }
-                    }
-
-                    // Guardar todos los cambios de una vez
-                    await _context.SaveChangesAsync();
-                    
-                    // Actualizar VentaId si se creó ProductoComprado
-                    if (usuario != null)
-                    {
-                        var productoCompradoSinVentaId = await _context.ProductoComprado
-                            .FirstOrDefaultAsync(pc => pc.UserId == usuario.Id && 
-                                                      pc.ProductoId == request.Pedido.ProductoId && 
-                                                      pc.VentaId == 0);
-                        if (productoCompradoSinVentaId != null)
-                        {
-                            productoCompradoSinVentaId.VentaId = venta.Id;
                             await _context.SaveChangesAsync();
                         }
                     }
 
                     await transaction.CommitAsync();
-                    _logger.LogInformation($"✅ Compra completada: Venta ID {venta.Id}");
+                    _logger.LogInformation($"Compra completada: Venta ID {venta.Id}");
 
-                    // SIMULACIÓN RÁPIDA de procesamiento de pago (solo para testing)
-                    await Task.Delay(100); // Reducido de 1000ms a 100ms
+                    await Task.Delay(100); 
 
                     var result = new
                     {
@@ -191,7 +157,6 @@ namespace HydroLink.Controllers
             {
                 _logger.LogError(ex, "❌ Error al procesar compra: {Message}", ex.Message);
                 
-                // Manejo detallado de errores
                 var errorMessage = ex switch
                 {
                     TimeoutException => "La operación tardó demasiado tiempo. Intente nuevamente.",
@@ -208,9 +173,6 @@ namespace HydroLink.Controllers
             }
         }
 
-        /// <summary>
-        /// Endpoint de prueba para diagnosticar problemas
-        /// </summary>
         [HttpGet("test/{productId}")]
         public async Task<IActionResult> TestProduct(int productId)
         {
@@ -248,9 +210,6 @@ namespace HydroLink.Controllers
             }
         }
         
-        /// <summary>
-        /// Validar datos de tarjeta (simulado)
-        /// </summary>
         [HttpPost("validate-card")]
         public IActionResult ValidateCard([FromBody] CardValidationRequest request)
         {
@@ -261,7 +220,6 @@ namespace HydroLink.Controllers
                     return BadRequest(new { valid = false, mensaje = "Número de tarjeta requerido" });
                 }
 
-                // Validación básica de longitud
                 var numeroLimpio = request.NumeroTarjeta.Replace(" ", "").Replace("-", "");
                 var isValid = numeroLimpio.Length >= 13 && numeroLimpio.Length <= 19 && numeroLimpio.All(char.IsDigit);
 
@@ -291,7 +249,6 @@ namespace HydroLink.Controllers
         }
     }
 
-    // DTOs para el controlador
     public class PurchaseProcessRequest
     {
         public ClienteDataDto Cliente { get; set; } = null!;

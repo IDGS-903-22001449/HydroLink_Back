@@ -36,7 +36,6 @@ namespace HydroLink.Controllers
                 .Include(c => c.ProductoHydroLink)
                 .AsQueryable();
 
-            // Aplicar filtros
             if (productoHydroLinkId.HasValue)
             {
                 query = query.Where(c => c.ProductoHydroLinkId == productoHydroLinkId.Value);
@@ -47,13 +46,12 @@ namespace HydroLink.Controllers
                 query = query.Where(c => c.Calificacion == calificacion.Value);
             }
 
-            // Aplicar ordenamiento
             query = ordenamiento.ToLower() switch
             {
                 "antiguos" => query.OrderBy(c => c.Fecha),
                 "mejorvaloracion" => query.OrderByDescending(c => c.Calificacion).ThenByDescending(c => c.Fecha),
                 "peorvaloracion" => query.OrderBy(c => c.Calificacion).ThenByDescending(c => c.Fecha),
-                _ => query.OrderByDescending(c => c.Fecha) // "recientes" por defecto
+                _ => query.OrderByDescending(c => c.Fecha)
             };
 
             var totalComentarios = await query.CountAsync();
@@ -284,7 +282,6 @@ namespace HydroLink.Controllers
         [HttpGet("ProductosDisponibles")]
         public async Task<ActionResult<object>> GetProductosDisponibles()
         {
-            // Verificar en ambas tablas
             var productosRegulares = await _context.Producto
                 .Select(p => new
                 {
@@ -325,21 +322,18 @@ namespace HydroLink.Controllers
         {
             try
             {
-                // Verificar que el usuario existe en AppUser
                 var usuario = await _userManager.FindByIdAsync(comentarioDto.UsuarioId);
                 if (usuario == null)
                 {
                     return BadRequest($"Usuario no encontrado con ID: {comentarioDto.UsuarioId}");
                 }
 
-                // Verificar que el producto HydroLink existe
                 var productoHydroLink = await _context.ProductoHydroLink.FindAsync(comentarioDto.ProductoHydroLinkId);
                 if (productoHydroLink == null)
                 {
                     return BadRequest($"Producto HydroLink no encontrado con ID: {comentarioDto.ProductoHydroLinkId}");
                 }
 
-                // Verificar que el usuario no haya comentado ya este producto
                 var comentarioExistente = await _context.Comentario
                     .FirstOrDefaultAsync(c => c.UsuarioId == comentarioDto.UsuarioId && c.ProductoHydroLinkId == comentarioDto.ProductoHydroLinkId);
                 
@@ -360,7 +354,6 @@ namespace HydroLink.Controllers
                 _context.Comentario.Add(comentario);
                 await _context.SaveChangesAsync();
 
-                // Devolver el comentario con la información del usuario y producto
                 var comentarioResponse = await _context.Comentario
                     .Include(c => c.Usuario)
                     .Include(c => c.ProductoHydroLink)
@@ -401,7 +394,6 @@ namespace HydroLink.Controllers
                 return NotFound();
             }
 
-            // Verificar que el usuario tenga permisos para editar este comentario
             if (comentarioExistente.UsuarioId != comentarioDto.UsuarioId)
             {
                 return Forbid("No tienes permisos para editar este comentario");
@@ -440,7 +432,6 @@ namespace HydroLink.Controllers
                 return NotFound();
             }
 
-            // Solo el propietario del comentario o un admin puede eliminarlo
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             
             if (string.IsNullOrEmpty(currentUserId))

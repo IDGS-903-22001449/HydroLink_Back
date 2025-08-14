@@ -254,7 +254,7 @@ namespace HydroLink.Data
                 .HasOne(v => v.Cotizacion)
                 .WithOne(c => c.Venta)
                 .HasForeignKey<Venta>(v => v.CotizacionId)
-                .OnDelete(DeleteBehavior.SetNull); // evita duplicado también aquí
+                .OnDelete(DeleteBehavior.SetNull); 
 
 
             builder.Entity<MovimientoComponente>().Property(e => e.Cantidad).HasPrecision(18, 4);
@@ -297,7 +297,6 @@ namespace HydroLink.Data
             //    .HasForeignKey<Cotizacion>(c => c.VentaId)
             //    .OnDelete(DeleteBehavior.SetNull);
 
-            // Configuración para ProductoComprado
             builder.Entity<ProductoComprado>()
                 .HasOne(pc => pc.Usuario)
                 .WithMany()
@@ -320,7 +319,6 @@ namespace HydroLink.Data
                 .HasIndex(pc => new { pc.UserId, pc.ProductoId })
                 .IsUnique();
 
-            // Configuración para Comentario
             builder.Entity<Comentario>()
                 .HasOne(c => c.Usuario)
                 .WithMany()
@@ -335,7 +333,7 @@ namespace HydroLink.Data
 
             builder.Entity<Comentario>()
                 .HasIndex(c => new { c.ProductoHydroLinkId, c.UsuarioId })
-                .IsUnique(); // Un usuario solo puede comentar una vez por producto
+                .IsUnique(); 
         }
     }
 }

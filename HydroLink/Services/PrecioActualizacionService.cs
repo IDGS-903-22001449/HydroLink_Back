@@ -21,14 +21,12 @@ namespace HydroLink.Services
 
         public async Task ActualizarPreciosProductosPorMateriaPrimaAsync(int materiaPrimaId, decimal nuevoCosto)
         {
-            // Usar contexto independiente para evitar conflictos de concurrencia
             using var context = await _contextFactory.CreateDbContextAsync();
             
             try
             {
                 _logger.LogInformation("Iniciando actualización de precios para materia prima {MateriaPrimaId} con nuevo costo {NuevoCosto}", materiaPrimaId, nuevoCosto);
                 
-                // Obtener todos los componentes que usan esta materia prima
                 var componentesAfectados = await context.ComponenteMateriaPrima
                     .Where(cmp => cmp.MateriaPrimaId == materiaPrimaId && cmp.Activo)
                     .Select(cmp => cmp.ComponenteId)
@@ -37,7 +35,6 @@ namespace HydroLink.Services
 
                 _logger.LogInformation("Encontrados {ComponenteCount} componentes afectados por materia prima {MateriaPrimaId}", componentesAfectados.Count, materiaPrimaId);
 
-                // Actualizar precios por cada componente afectado
                 foreach (var componenteId in componentesAfectados)
                 {
                     await ActualizarPreciosProductosPorComponenteAsync(componenteId);
@@ -64,7 +61,6 @@ namespace HydroLink.Services
             {
                 _logger.LogInformation("Iniciando actualización de precios para componente {ComponenteId}", componenteId);
                 
-                // Obtener todos los productos que usan este componente
                 var productosAfectados = await context.ComponenteRequerido
                     .Where(cr => cr.ComponenteId == componenteId)
                     .Select(cr => cr.ProductoHydroLinkId)
@@ -102,16 +98,12 @@ namespace HydroLink.Services
                 throw new ArgumentException($"Producto con ID {productoId} no encontrado");
             }
 
-            // Obtener el margen de ganancia actual
             var margenActual = await ObtenerMargenGananciaProductoAsync(productoId);
 
-            // Calcular nuevo precio con el mismo margen
             var nuevoPrecio = await _costoPromedioService.CalcularPrecioProductoHydroLinkAsync(productoId, margenActual);
 
-            // Guardar el precio anterior para el log
             var precioAnterior = producto.Precio;
             
-            // Actualizar el precio
             producto.Precio = nuevoPrecio;
             await context.SaveChangesAsync();
 
@@ -123,12 +115,7 @@ namespace HydroLink.Services
 
         public async Task<decimal> ObtenerMargenGananciaProductoAsync(int productoId)
         {
-            // Para evitar el problema de recálculo circular, usar un margen fijo configurado
-            // El margen se puede obtener de una configuración o usar uno estándar
-            
-            // Por ahora, usamos un margen fijo del 35% que se configuró previamente
-            // En el futuro, esto podría venir de una tabla de configuración por producto
-            var margenFijo = 0.35m; // 35% de margen
+            var margenFijo = 0.35m;
             
             _logger.LogInformation("Usando margen fijo de {Margen:P2} para producto {ProductoId}", 
                 margenFijo, productoId);

@@ -15,7 +15,6 @@ namespace HydroLink.Services
         
         public async Task<decimal> CalcularCostoPromedioComponenteAsync(int componenteId)
         {
-            // Obtener todas las materias primas del componente
             var componenteMaterias = await _context.ComponenteMateriaPrima
                 .Where(cm => cm.ComponenteId == componenteId && cm.Activo)
                 .Include(cm => cm.MateriaPrima)
@@ -23,7 +22,6 @@ namespace HydroLink.Services
                 
             if (!componenteMaterias.Any())
             {
-                // Si no tiene materias primas asociadas, intentar obtener de CompraDetalle directamente
                 return await ObtenerCostoDirectoComponenteAsync(componenteId);
             }
             
@@ -42,13 +40,10 @@ namespace HydroLink.Services
         
         public async Task<decimal> CalcularCostoPromedioMateriaPrimaAsync(int materiaPrimaId)
         {
-            // Obtener el costo promedio directamente de la tabla MateriaPrima
-            // que se actualiza automáticamente en ComprasController
             var materiaPrima = await _context.MateriaPrima.FindAsync(materiaPrimaId);
             
             if (materiaPrima == null || materiaPrima.CostoUnitario == 0)
             {
-                // Fallback: obtener el costo de las últimas compras
                 var ultimaCompra = await _context.CompraDetalle
                     .Where(cd => cd.MateriaPrimaId == materiaPrimaId)
                     .OrderByDescending(cd => cd.Compra.Fecha)
@@ -89,7 +84,6 @@ namespace HydroLink.Services
                 costoTotal += costoComponente * componenteRequerido.Cantidad;
             }
             
-            // Aplicar margen de ganancia
             return costoTotal * (1 + margenGanancia);
         }
         
@@ -145,8 +139,6 @@ namespace HydroLink.Services
         
         private async Task<decimal> ObtenerCostoDirectoComponenteAsync(int componenteId)
         {
-            // Para componentes que no tienen materias primas asociadas
-            // (como mano de obra), buscar en CompraDetalle
             var ultimaCompra = await _context.CompraDetalle
                 .Where(cd => cd.MateriaPrimaId == componenteId)
                 .OrderByDescending(cd => cd.Compra.Fecha)

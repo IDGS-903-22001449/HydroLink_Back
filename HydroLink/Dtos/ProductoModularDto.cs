@@ -50,7 +50,7 @@ namespace HydroLink.Dtos
         public int ComponenteId { get; set; }
         public decimal CantidadBase { get; set; }
         public decimal CantidadPorModuloAdicional { get; set; }
-        public string TipoComponente { get; set; } = "BASE"; // "BASE" o "ADICIONAL"
+        public string TipoComponente { get; set; } = "BASE"; 
         public string NotasInstalacion { get; set; } = string.Empty;
         public bool EsObligatorio { get; set; } = true;
     }
@@ -61,7 +61,7 @@ namespace HydroLink.Dtos
         public string EmailCliente { get; set; } = string.Empty;
         public string TelefonoCliente { get; set; } = string.Empty;
         public string NombreProyecto { get; set; } = string.Empty;
-        public int ProductoModularId { get; set; } = 1; // Por defecto el primer producto
+        public int ProductoModularId { get; set; } = 1;
         public int CantidadModulos { get; set; } = 1;
         public string EspecificacionesEspeciales { get; set; } = string.Empty;
         public decimal? PorcentajeGananciaPersonalizado { get; set; }

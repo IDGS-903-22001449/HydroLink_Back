@@ -30,39 +30,75 @@ namespace HydroLink.Controllers
 
         // GET: api/productos
         [HttpGet]
-        public async Task<IActionResult> GetProductos()
+        public async Task<IActionResult> GetProductos([FromQuery] bool includeComponents = false)
         {
             try
             {
-                // ULTRA-OPTIMIZACIÓN: Solo campos esenciales para la lista de productos
-                var productos = await _context.ProductoHydroLink
-                    .Where(p => p.Activo)
-                    .Select(p => new 
-                    {
-                        p.Id,
-                        p.Nombre,
-                        p.Descripcion,
-                        p.Categoria,
-                        p.Precio,
-                        p.ImagenBase64
-                        // Eliminar campos no esenciales para mejorar rendimiento
-                    })
-                    .Take(20) // Limitar resultados
-                    .OrderByDescending(p => p.Id) // Ordenar por ID es más rápido
-                    .ToListAsync();
-
-                // Mapear directamente a un objeto simple para máximo rendimiento
-                var productosDto = productos.Select(p => new 
+                if (includeComponents)
                 {
-                    id = p.Id,
-                    nombre = p.Nombre,
-                    descripcion = p.Descripcion,
-                    categoria = p.Categoria,
-                    precio = p.Precio,
-                    imagenBase64 = p.ImagenBase64
-                }).ToList();
+                    var productosConComponentes = await _context.ProductoHydroLink
+                        .Where(p => p.Activo)
+                        .Take(10) 
+                        .OrderByDescending(p => p.Id)
+                        .Select(p => new 
+                        {
+                            id = p.Id,
+                            nombre = p.Nombre,
+                            descripcion = p.Descripcion,
+                            categoria = p.Categoria,
+                            precio = p.Precio,
+                            activo = p.Activo,
+                            fechaCreacion = p.FechaCreacion.ToString("yyyy-MM-dd"),
+                            especificaciones = p.Especificaciones ?? "",
+                            tipoInstalacion = p.TipoInstalacion ?? "",
+                            tiempoInstalacion = p.TiempoInstalacion ?? "",
+                            garantia = p.Garantia ?? "",
+                            imagenBase64 = (string)null,
+                            componentesRequeridos = p.ComponentesRequeridos.Select(cr => new 
+                            {
+                                id = cr.Id,
+                                componenteId = cr.ComponenteId,
+                                nombreComponente = cr.Componente.Nombre ?? "",
+                                cantidad = cr.Cantidad,
+                                unidadMedida = cr.Componente.UnidadMedida ?? "",
+                                especificaciones = cr.Especificaciones ?? "",
+                                precioUnitario = 150m 
+                            }).ToList()
+                        })
+                        .AsNoTracking()
+                        .ToListAsync();
 
-                return Ok(productosDto);
+                    return Ok(productosConComponentes);
+                }
+                else
+                {
+                    var productos = await _context.ProductoHydroLink
+                        .Where(p => p.Activo)
+                        .Select(p => new 
+                        {
+                            p.Id,
+                            p.Nombre,
+                            p.Descripcion,
+                            p.Categoria,
+                            p.Precio,
+                            p.ImagenBase64
+                        })
+                        .Take(20) 
+                        .OrderByDescending(p => p.Id)
+                        .ToListAsync();
+
+                    var productosDto = productos.Select(p => new 
+                    {
+                        id = p.Id,
+                        nombre = p.Nombre,
+                        descripcion = p.Descripcion,
+                        categoria = p.Categoria,
+                        precio = p.Precio,
+                        imagenBase64 = p.ImagenBase64
+                    }).ToList();
+
+                    return Ok(productosDto);
+                }
             }
             catch (Exception ex)
             {
@@ -81,7 +117,7 @@ namespace HydroLink.Controllers
             var productos = await _context.ProductoHydroLink
                 .Where(p => p.Activo)
                 .OrderByDescending(p => p.FechaCreacion)
-                .Take(2) // Limitar a solo 2 productos
+                .Take(2) 
                 .Select(p => new ProductoHomeDto
                 {
                     Id = p.Id,
@@ -102,7 +138,6 @@ namespace HydroLink.Controllers
         {
             if (includePdf)
             {
-                // VERSIÓN CON PDF: Carga completa del producto incluyendo el PDF
                 var producto = await _context.ProductoHydroLink
                     .Include(p => p.ComponentesRequeridos)
                         .ThenInclude(cr => cr.Componente)
@@ -111,7 +146,6 @@ namespace HydroLink.Controllers
                 if (producto == null)
                     return NotFound($"Producto con ID {id} no encontrado");
 
-                // Calcular precio estimado basado en componentes
                 decimal precioEstimadoComponentes = 0;
                 foreach (var cr in producto.ComponentesRequeridos)
                 {
@@ -135,7 +169,7 @@ namespace HydroLink.Controllers
                     Garantia = producto.Garantia,
                     ImagenBase64 = producto.ImagenBase64,
                     TieneManual = !string.IsNullOrEmpty(producto.ManualUsuarioPdf),
-                    ManualUsuarioPdf = producto.ManualUsuarioPdf, // Incluir PDF completo
+                    ManualUsuarioPdf = producto.ManualUsuarioPdf,
                     ComponentesRequeridos = producto.ComponentesRequeridos.Select(cr => new ComponenteRequeridoDto
                     {
                         Id = cr.Id,
@@ -151,7 +185,6 @@ namespace HydroLink.Controllers
             }
             else
             {
-                // VERSIÓN OPTIMIZADA: Sin cargar el PDF para mejor rendimiento
                 var producto = await _context.ProductoHydroLink
                     .Where(p => p.Id == id)
                     .Select(p => new
@@ -184,7 +217,6 @@ namespace HydroLink.Controllers
                 if (producto == null)
                     return NotFound($"Producto con ID {id} no encontrado");
 
-                // Calcular precio estimado basado en componentes
                 decimal precioEstimadoComponentes = 0;
                 foreach (var cr in producto.ComponentesRequeridos)
                 {
@@ -208,7 +240,6 @@ namespace HydroLink.Controllers
                     Garantia = producto.Garantia,
                     ImagenBase64 = producto.ImagenBase64,
                     TieneManual = producto.TieneManual,
-                    // ManualUsuarioPdf se omite intencionalmente para optimizar rendimiento
                     ComponentesRequeridos = producto.ComponentesRequeridos.Select(cr => new ComponenteRequeridoDto
                     {
                         Id = cr.Id,
@@ -231,15 +262,11 @@ namespace HydroLink.Controllers
             if (createDto == null)
                 return BadRequest("Datos del producto inválidos");
 
-            // Comentamos temporalmente la validación de imagen requerida
-            // if (string.IsNullOrWhiteSpace(createDto.ImagenBase64))
-            //     return BadRequest("La imagen del producto es requerida en formato base64.");
-
+            
             using var transaction = await _context.Database.BeginTransactionAsync();
             
             try
             {
-                // Validar que todos los componentes existan
                 var componenteIds = createDto.ComponentesRequeridos.Select(c => c.ComponenteId).ToList();
                 if (componenteIds.Any())
                 {
@@ -255,7 +282,6 @@ namespace HydroLink.Controllers
                     }
                 }
 
-                // Validar lógica de precio
                 if (createDto.CalcularPrecioAutomatico && !createDto.ComponentesRequeridos.Any())
                 {
                     return BadRequest("Para calcular el precio automáticamente, debe especificar al menos un componente requerido.");
@@ -266,13 +292,12 @@ namespace HydroLink.Controllers
                     return BadRequest("Debe especificar un precio o habilitar el cálculo automático de precios.");
                 }
 
-                // Crear el producto
                 var producto = new ProductoHydroLink
                 {
                     Nombre = createDto.Nombre,
                     Descripcion = createDto.Descripcion,
                     Categoria = createDto.Categoria,
-                    Precio = createDto.Precio ?? 0m, // Se calculará después si es automático
+                    Precio = createDto.Precio ?? 0m, 
                     Especificaciones = createDto.Especificaciones,
                     TipoInstalacion = createDto.TipoInstalacion,
                     TiempoInstalacion = createDto.TiempoInstalacion,
@@ -286,7 +311,6 @@ namespace HydroLink.Controllers
                 _context.ProductoHydroLink.Add(producto);
                 await _context.SaveChangesAsync();
 
-                // Agregar los componentes requeridos
                 foreach (var componenteDto in createDto.ComponentesRequeridos)
                 {
                     var componenteRequerido = new ComponenteRequerido
@@ -302,7 +326,6 @@ namespace HydroLink.Controllers
                 
                 await _context.SaveChangesAsync();
 
-                // Si se solicita calcular precio automáticamente
                 if (createDto.CalcularPrecioAutomatico && createDto.ComponentesRequeridos.Any())
                 {
                     var nuevoPrecio = await _costoPromedioService.CalcularPrecioProductoHydroLinkAsync(producto.Id, createDto.MargenGanancia);
@@ -315,7 +338,6 @@ namespace HydroLink.Controllers
 
                 await transaction.CommitAsync();
 
-                // OPTIMIZADO: No cargar el producto completo, solo devolver datos básicos
                 var response = new
                 {
                     id = producto.Id,
@@ -325,7 +347,6 @@ namespace HydroLink.Controllers
                     tieneManual = !string.IsNullOrEmpty(createDto.ManualUsuarioPdf)
                 };
 
-                // Devolver referencia al producto sin incluir PDF en la respuesta
                 return CreatedAtAction(nameof(GetProducto), new { id = producto.Id }, response);
             }
             catch (Exception ex)
@@ -376,7 +397,6 @@ namespace HydroLink.Controllers
             
             try
             {
-                // Buscar el producto existente
                 var producto = await _context.ProductoHydroLink
                     .Include(p => p.ComponentesRequeridos)
                     .FirstOrDefaultAsync(p => p.Id == id);
@@ -384,7 +404,6 @@ namespace HydroLink.Controllers
                 if (producto == null)
                     return NotFound($"Producto con ID {id} no encontrado");
 
-                // Validar que todos los componentes existan si se proporcionan
                 var componenteIds = updateDto.ComponentesRequeridos.Select(c => c.ComponenteId).ToList();
                 if (componenteIds.Any())
                 {
@@ -400,7 +419,6 @@ namespace HydroLink.Controllers
                     }
                 }
 
-                // Validar lógica de precio
                 if (updateDto.CalcularPrecioAutomatico && !updateDto.ComponentesRequeridos.Any())
                 {
                     return BadRequest("Para calcular el precio automáticamente, debe especificar al menos un componente requerido.");
@@ -411,7 +429,6 @@ namespace HydroLink.Controllers
                     return BadRequest("Debe especificar un precio o habilitar el cálculo automático de precios.");
                 }
 
-                // Actualizar datos del producto
                 producto.Nombre = updateDto.Nombre;
                 producto.Descripcion = updateDto.Descripcion;
                 producto.Categoria = updateDto.Categoria;
@@ -421,22 +438,18 @@ namespace HydroLink.Controllers
                 producto.TiempoInstalacion = updateDto.TiempoInstalacion;
                 producto.Garantia = updateDto.Garantia;
                 
-                // Actualizar imagen solo si se proporciona una nueva
                 if (!string.IsNullOrWhiteSpace(updateDto.ImagenBase64))
                 {
                     producto.ImagenBase64 = updateDto.ImagenBase64;
                 }
                 
-                // Actualizar manual solo si se proporciona uno nuevo
                 if (!string.IsNullOrWhiteSpace(updateDto.ManualUsuarioPdf))
                 {
                     producto.ManualUsuarioPdf = updateDto.ManualUsuarioPdf;
                 }
 
-                // Eliminar componentes existentes
                 _context.ComponenteRequerido.RemoveRange(producto.ComponentesRequeridos);
 
-                // Agregar los nuevos componentes requeridos
                 foreach (var componenteDto in updateDto.ComponentesRequeridos)
                 {
                     var componenteRequerido = new ComponenteRequerido
@@ -452,7 +465,6 @@ namespace HydroLink.Controllers
                 
                 await _context.SaveChangesAsync();
 
-                // Si se solicita calcular precio automáticamente
                 if (updateDto.CalcularPrecioAutomatico && updateDto.ComponentesRequeridos.Any())
                 {
                     var nuevoPrecio = await _costoPromedioService.CalcularPrecioProductoHydroLinkAsync(producto.Id, updateDto.MargenGanancia);
@@ -490,7 +502,6 @@ namespace HydroLink.Controllers
             if (producto == null)
                 return NotFound($"Producto con ID {id} no encontrado");
 
-            // Eliminación lógica
             producto.Activo = false;
             await _context.SaveChangesAsync();
 
@@ -573,15 +584,11 @@ namespace HydroLink.Controllers
             return Ok(preview);
         }
 
-        /// <summary>
-        /// Endpoint optimizado específicamente para obtener el PDF de un producto
-        /// </summary>
         [HttpGet("{id}/manual-pdf")]
         public async Task<IActionResult> GetProductoPdf(int id)
         {
             try
             {
-                // ULTRA-OPTIMIZADO: Solo cargar el PDF específico sin otros datos
                 var pdfData = await _context.ProductoHydroLink
                     .Where(p => p.Id == id && p.Activo)
                     .Select(p => new
@@ -617,10 +624,6 @@ namespace HydroLink.Controllers
             }
         }
 
-        // GET: api/productos/precios-actualizados
-        /// <summary>
-        /// Endpoint para verificar que los precios estén actualizados con los últimos costos de materias primas
-        /// </summary>
         [HttpGet("precios-actualizados")]
         public async Task<IActionResult> GetProductosConPreciosActualizados()
         {
@@ -636,14 +639,12 @@ namespace HydroLink.Controllers
                         p.Categoria,
                         PrecioActual = p.Precio,
                         p.ImagenBase64,
-                        // Incluir timestamp para verificar frecuencia de actualización
                         UltimaActualizacion = DateTime.UtcNow
                     })
                     .Take(20)
                     .OrderByDescending(p => p.Id)
                     .ToListAsync();
 
-                // Calcular precio estimado dinámicamente para comparación
                 var productosConComparacion = new List<object>();
                 foreach (var producto in productos)
                 {
@@ -663,14 +664,13 @@ namespace HydroLink.Controllers
                             PrecioCalculadoDinamicamente = precioEstimado,
                             DiferenciaDolares = diferencia,
                             DiferenciaPorcentaje = porcentajeDiferencia,
-                            PreciosCoinciden = diferencia <= 0.50m, // Tolerancia de 50 centavos
+                            PreciosCoinciden = diferencia <= 0.50m,
                             producto.ImagenBase64,
                             producto.UltimaActualizacion
                         });
                     }
                     catch (Exception ex)
                     {
-                        // En caso de error al calcular precio dinámico, usar solo el precio almacenado
                         productosConComparacion.Add(new
                         {
                             producto.Id,
@@ -704,9 +704,6 @@ namespace HydroLink.Controllers
         }
 
         // POST: api/productos/forzar-actualizacion-precios
-        /// <summary>
-        /// Endpoint para forzar la actualización de precios de todos los productos
-        /// </summary>
         [HttpPost("forzar-actualizacion-precios")]
         public async Task<IActionResult> ForzarActualizacionPrecios([FromQuery] decimal margenGanancia = 0.30m)
         {
@@ -726,7 +723,6 @@ namespace HydroLink.Controllers
                     {
                         var nuevoPrecio = await _costoPromedioService.CalcularPrecioProductoHydroLinkAsync(producto.Id, margenGanancia);
                         
-                        // Actualizar en base de datos
                         var productoEntity = await _context.ProductoHydroLink.FindAsync(producto.Id);
                         if (productoEntity != null)
                         {

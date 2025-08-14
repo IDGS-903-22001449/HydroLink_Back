@@ -31,8 +31,6 @@ namespace HydroLink.Controllers
         {
             if (createDto == null)
                 return BadRequest("Datos de cotización inválidos");
-
-            // Obtener el producto de HydroLink
             var producto = await _context.ProductoHydroLink
                 .Include(p => p.ComponentesRequeridos)
                 .ThenInclude(cr => cr.Componente)
@@ -40,24 +38,36 @@ namespace HydroLink.Controllers
 
             if (producto == null)
                 return NotFound($"Producto con ID {createDto.ProductoId} no encontrado");
-
-            // Obtener datos del cliente (si existe)
             var cliente = await _context.Persona.FindAsync(createDto.ClienteId);
 
-            // Calcular el costo total estimado basado en componentes
             decimal costoTotalComponentes = 0;
-            foreach (var cr in producto.ComponentesRequeridos)
+            
+            if (createDto.ComponenteIds != null && createDto.ComponenteIds.Any())
             {
-                var precioComponente = await _precioService.ObtenerPrecioPromedioAsync(cr.ComponenteId);
-                costoTotalComponentes += precioComponente * cr.Cantidad;
+                foreach (var componenteId in createDto.ComponenteIds)
+                {
+                    var componenteRequerido = producto.ComponentesRequeridos
+                        .FirstOrDefault(cr => cr.ComponenteId == componenteId);
+                    
+                    if (componenteRequerido != null)
+                    {
+                        var precioComponente = await _precioService.ObtenerPrecioPromedioAsync(componenteRequerido.ComponenteId);
+                        costoTotalComponentes += precioComponente * componenteRequerido.Cantidad;
+                    }
+                }
+            }
+            else
+            {
+                foreach (var cr in producto.ComponentesRequeridos)
+                {
+                    var precioComponente = await _precioService.ObtenerPrecioPromedioAsync(cr.ComponenteId);
+                    costoTotalComponentes += precioComponente * cr.Cantidad;
+                }
             }
 
-            // Calcular mano de obra y otros costos
-            var manoDeObra = costoTotalComponentes * 0.20m; // 20% del costo de componentes
-            var otrosCostos = costoTotalComponentes * 0.10m; // 10% para imprevistos
+            var manoDeObra = costoTotalComponentes * 0.20m;
+            var otrosCostos = costoTotalComponentes * 0.10m;
             var subtotal = costoTotalComponentes + manoDeObra + otrosCostos;
-
-            // Calcular ganancia y total final
             var ganancia = subtotal * (createDto.PorcentajeGanancia / 100);
             var totalEstimado = subtotal + ganancia;
 
@@ -86,7 +96,6 @@ namespace HydroLink.Controllers
             _context.Cotizacion.Add(cotizacion);
             await _context.SaveChangesAsync();
 
-            // Crear respuesta sin referencias circulares
             var response = new
             {
                 cotizacion.Id,
@@ -236,15 +245,12 @@ namespace HydroLink.Controllers
             if (cotizacion == null)
                 return NotFound($"Cotización con ID {id} no encontrada");
 
-            // Validar estado
             var validStates = new[] { "BORRADOR", "PENDIENTE", "APROBADA", "RECHAZADA" };
             if (!validStates.Contains(updateDto.Estado))
                 return BadRequest("Estado inválido");
 
-            // Si se está aprobando la cotización, crear una venta
             if (updateDto.Estado == "APROBADA" && cotizacion.Estado != "APROBADA")
             {
-                // Verificar que no tenga ya una venta asociada
                 if (cotizacion.VentaId != null)
                 {
                     return BadRequest(new
@@ -254,9 +260,8 @@ namespace HydroLink.Controllers
                     });
                 }
 
-                // Validar inventario suficiente antes de crear la venta
                 var componentesInsuficientes = new List<string>();
-                var cantidadProducto = 1; // Por defecto 1
+                var cantidadProducto = 1;
                 
                 if (cotizacion.Producto?.ComponentesRequeridos != null)
                 {
@@ -282,7 +287,6 @@ namespace HydroLink.Controllers
                     });
                 }
 
-                // Crear la venta basada en la cotización
                 var totalVenta = cotizacion.TotalEstimado * cantidadProducto;
                 var venta = new Venta
                 {
@@ -293,17 +297,15 @@ namespace HydroLink.Controllers
                     Cantidad = cantidadProducto,
                     PrecioUnitario = cotizacion.TotalEstimado,
                     Total = totalVenta,
-                    Estado = "PENDIENTE", // Cambiar a PENDIENTE inicialmente
+                    Estado = "PENDIENTE",
                     Observaciones = $"Venta generada automáticamente desde cotización #{cotizacion.Id} - {cotizacion.NombreProyecto}"
                 };
 
                 _context.Venta.Add(venta);
                 await _context.SaveChangesAsync();
 
-                // Actualizar la cotización con la referencia a la venta
                 cotizacion.VentaId = venta.Id;
                 
-                // Reducir el inventario de los componentes requeridos
                 if (cotizacion.Producto?.ComponentesRequeridos != null)
                 {
                     foreach (var componenteRequerido in cotizacion.Producto.ComponentesRequeridos)
@@ -312,8 +314,6 @@ namespace HydroLink.Controllers
                         await _inventarioService.ReducirInventarioAsync(componenteRequerido.ComponenteId, cantidadAReducir);
                     }
                 }
-
-                // Marcar la venta como completada después de reducir inventario
                 venta.Estado = "COMPLETADA";
                 await _context.SaveChangesAsync();
             }
@@ -358,6 +358,7 @@ public class UpdateQuoteStatusDto
         public string NombreProyecto { get; set; } = string.Empty;
         public string Descripcion { get; set; } = string.Empty;
         public string Observaciones { get; set; } = string.Empty;
-        public decimal PorcentajeGanancia { get; set; } = 25.0m; // Ganancia por defecto del 25%
+        public decimal PorcentajeGanancia { get; set; } = 25.0m; 
+        public List<int> ComponenteIds { get; set; } = new List<int>();
     }
 }

@@ -18,20 +18,16 @@ namespace HydroLink.Services
 
         public async Task<bool> ReducirInventarioAsync(int componenteId, decimal cantidad)
         {
-            // Verificar que hay suficiente existencia
             var existenciaActual = await ObtenerExistenciaAsync(componenteId);
             if (existenciaActual < cantidad)
             {
                 throw new InvalidOperationException($"No hay suficiente inventario para el componente ID {componenteId}. Existencia actual: {existenciaActual}, Cantidad requerida: {cantidad}");
             }
 
-            // Reducir inventario por materias primas asociadas al componente
             await ReducirMaterisPrimasComponenteAsync(componenteId, cantidad);
 
-            // Obtener costo promedio del componente
             var costoUnitarioComponente = await _costoPromedioService.CalcularCostoPromedioComponenteAsync(componenteId);
 
-            // Crear un movimiento de inventario de salida
             var movimiento = new MovimientoComponente
             {
                 ComponenteId = componenteId,
@@ -52,7 +48,6 @@ namespace HydroLink.Services
 
         public async Task<bool> AumentarInventarioAsync(int componenteId, decimal cantidad)
         {
-            // Crear un movimiento de inventario de entrada
             var movimiento = new MovimientoComponente
             {
                 ComponenteId = componenteId,
@@ -73,8 +68,6 @@ namespace HydroLink.Services
 
         public async Task<decimal> ObtenerExistenciaAsync(int componenteId)
         {
-            // SIEMPRE calcular desde materias primas disponibles
-            // Este es el enfoque correcto para un sistema de producción bajo demanda
             var relacionesMateriaPrima = await _context.ComponenteMateriaPrima
                 .Where(cm => cm.ComponenteId == componenteId && cm.Activo)
                 .Include(cm => cm.MateriaPrima)
@@ -82,10 +75,9 @@ namespace HydroLink.Services
 
             if (!relacionesMateriaPrima.Any())
             {
-                return 0; // No hay relaciones configuradas
+                return 0; 
             }
 
-            // Calcular cuántos componentes se pueden hacer con las materias primas disponibles
             decimal menorDisponible = decimal.MaxValue;
             
             foreach (var relacion in relacionesMateriaPrima)
@@ -119,7 +111,6 @@ namespace HydroLink.Services
 
         private async Task ReducirInventarioMateriaPrimaAsync(int materiaPrimaId, decimal cantidad)
         {
-            // Usar el stock directo de MateriaPrima en lugar de LoteInventario
             var materiaPrima = await _context.MateriaPrima.FindAsync(materiaPrimaId);
             
             if (materiaPrima == null)
@@ -132,11 +123,9 @@ namespace HydroLink.Services
                 throw new InvalidOperationException($"No hay suficiente stock para la materia prima ID {materiaPrimaId}. Stock actual: {materiaPrima.Stock}, Cantidad requerida: {cantidad}");
             }
 
-            // Reducir el stock directamente (convertir decimal a int)
             int cantidadInt = (int)Math.Floor(cantidad);
             materiaPrima.Stock -= cantidadInt;
 
-            // Crear movimiento de inventario para auditoría
             var movimiento = new MovimientoInventario
             {
                 MateriaPrimaId = materiaPrimaId,

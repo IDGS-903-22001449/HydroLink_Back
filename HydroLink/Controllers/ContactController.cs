@@ -27,7 +27,7 @@ public class ContactController : ControllerBase
             {contactForm.Message}
         ";
 
-        string destinationEmail = "ajkevin55@gmail.com"; // Email donde recibirás los mensajes de contacto
+        string destinationEmail = "ajkevin55@gmail.com";
 
         try
         {

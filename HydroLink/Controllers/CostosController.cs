@@ -28,11 +28,6 @@ namespace HydroLink.Controllers
             _logger = logger;
         }
 
-        /// <summary>
-        /// Obtiene el detalle de costo de un componente específico
-        /// </summary>
-        /// <param name="componenteId">ID del componente</param>
-        /// <returns>Detalle del costo del componente</returns>
         [HttpGet("componente/{componenteId}")]
         public async Task<ActionResult<ComponenteCostoDetalleDto>> GetDetalleComponente(int componenteId)
         {
@@ -48,12 +43,6 @@ namespace HydroLink.Controllers
             }
         }
 
-        /// <summary>
-        /// Calcula el precio teórico de un producto HydroLink con un margen específico
-        /// </summary>
-        /// <param name="productoId">ID del producto</param>
-        /// <param name="margen">Margen de ganancia (por defecto 30%)</param>
-        /// <returns>Precio calculado del producto</returns>
         [HttpGet("producto/{productoId}/precio")]
         public async Task<ActionResult<object>> CalcularPrecioProducto(int productoId, [FromQuery] decimal margen = 0.30m)
         {
@@ -70,8 +59,6 @@ namespace HydroLink.Controllers
                 }
 
                 var precioCalculado = await _costoPromedioService.CalcularPrecioProductoHydroLinkAsync(productoId, margen);
-                
-                // Obtener detalle de componentes
                 var detalleComponentes = new List<object>();
                 decimal costoTotalComponentes = 0;
 
@@ -116,11 +103,6 @@ namespace HydroLink.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene todos los lotes disponibles de una materia prima
-        /// </summary>
-        /// <param name="materiaPrimaId">ID de la materia prima</param>
-        /// <returns>Lista de lotes de inventario</returns>
         [HttpGet("materiaprima/{materiaPrimaId}/lotes")]
         public async Task<ActionResult<object>> GetLotesMateriaPrima(int materiaPrimaId)
         {
@@ -170,10 +152,6 @@ namespace HydroLink.Controllers
             }
         }
 
-        /// <summary>
-        /// Actualiza manualmente los precios de todos los productos HydroLink
-        /// </summary>
-        /// <returns>Resultado de la actualización</returns>
         [HttpPost("actualizar-precios-productos")]
         public async Task<ActionResult<object>> ActualizarPreciosProductos()
         {
@@ -243,10 +221,6 @@ namespace HydroLink.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene un reporte de costos para todos los productos activos
-        /// </summary>
-        /// <returns>Reporte de costos</returns>
         [HttpGet("reporte-productos")]
         public async Task<ActionResult<object>> GetReporteCostosProductos()
         {

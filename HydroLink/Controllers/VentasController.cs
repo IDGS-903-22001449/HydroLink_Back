@@ -14,27 +14,26 @@ namespace HydroLink.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IInventarioService _inventarioService;
-        private readonly ICostoPromedioService _costoPromedioService; // Nuevo servicio
+        private readonly ICostoPromedioService _costoPromedioService; 
 
         public VentasController(
             AppDbContext context, 
             IInventarioService inventarioService,
-            ICostoPromedioService costoPromedioService) // Inyectar nuevo servicio
+            ICostoPromedioService costoPromedioService) 
         {
             _context = context;
             _inventarioService = inventarioService;
-            _costoPromedioService = costoPromedioService; // Asignar nuevo servicio
+            _costoPromedioService = costoPromedioService; 
         }
 
         // POST: api/ventas
         [HttpPost]
-        [AllowAnonymous] // Permitir acceso sin autenticación para pruebas
+        [AllowAnonymous] 
         public async Task<IActionResult> CrearVenta([FromBody] VentaCreateDto createDto)
         {
             if (createDto == null)
                 return BadRequest("Datos de venta inválidos");
 
-            // Obtener el producto de HydroLink
             var producto = await _context.ProductoHydroLink
                 .Include(p => p.ComponentesRequeridos)
                 .ThenInclude(cr => cr.Componente)
@@ -43,7 +42,6 @@ namespace HydroLink.Controllers
             if (producto == null)
                 return NotFound($"Producto con ID {createDto.ProductoId} no encontrado");
 
-            // Validar inventario suficiente antes de procesar la venta
             var componentesInsuficientes = new List<string>();
             
             foreach (var componenteRequerido in producto.ComponentesRequeridos)
@@ -70,8 +68,6 @@ namespace HydroLink.Controllers
             try
             {
                 using var transaction = await _context.Database.BeginTransactionAsync();
-
-                // Crear la venta
                 var venta = new Venta
                 {
                     ClienteId = createDto.ClienteId,
@@ -86,8 +82,6 @@ namespace HydroLink.Controllers
 
                 _context.Venta.Add(venta);
                 await _context.SaveChangesAsync();
-
-                // Reducir el inventario de los componentes requeridos
                 foreach (var componenteRequerido in producto.ComponentesRequeridos)
                 {
                     var cantidadAReducir = componenteRequerido.Cantidad * createDto.Cantidad;
@@ -160,16 +154,14 @@ namespace HydroLink.Controllers
             return Ok(ventas);
         }
 
-        // GET: api/ventas/user/{email} - Obtener compras de un usuario específico
+        // GET: api/ventas/user/{email}
         [HttpGet("user/{email}")]
-        [AllowAnonymous] // Temporalmente para debug
+        [AllowAnonymous] 
         public async Task<IActionResult> GetVentasByUser(string email)
         {
             try
             {
-                Console.WriteLine($"=== BACKEND DEBUG: Buscando compras para email: {email} ===");
                 
-                // Buscar el cliente por email
                 var cliente = await _context.Persona.OfType<Cliente>()
                     .FirstOrDefaultAsync(c => c.Email == email);
 
@@ -182,7 +174,7 @@ namespace HydroLink.Controllers
                 if (cliente == null)
                 {
                     Console.WriteLine("Cliente no encontrado, devolviendo lista vacía");
-                    return Ok(new List<object>()); // Devolver lista vacía si no se encuentra el cliente
+                    return Ok(new List<object>()); 
                 }
 
                 var ventas = await _context.Venta
@@ -226,7 +218,7 @@ namespace HydroLink.Controllers
             }
         }
 
-        // GET: api/ventas/metrics - Endpoint para obtener métricas de ventas
+        // GET: api/ventas/metrics
         [HttpGet("metrics")]
         public async Task<IActionResult> GetSalesMetrics()
         {
@@ -235,25 +227,19 @@ namespace HydroLink.Controllers
                 var currentMonth = DateTime.UtcNow.Month;
                 var currentYear = DateTime.UtcNow.Year;
                 var last30Days = DateTime.UtcNow.AddDays(-30);
-
-                // Calcular ingresos mensuales
                 var monthlyRevenue = await _context.Venta
                     .Where(v => v.Fecha.Month == currentMonth && v.Fecha.Year == currentYear && v.Estado == "COMPLETADA")
                     .SumAsync(v => v.Total);
 
-                // Contar órdenes completadas este mes
                 var ordersCompleted = await _context.Venta
                     .CountAsync(v => v.Fecha.Month == currentMonth && v.Fecha.Year == currentYear && v.Estado == "COMPLETADA");
-
-                // Calcular valor promedio de orden (últimos 30 días)
                 var recentSales = await _context.Venta
                     .Where(v => v.Fecha >= last30Days && v.Estado == "COMPLETADA")
                     .ToListAsync();
                     
                 var averageOrderValue = recentSales.Any() ? recentSales.Average(v => v.Total) : 0;
 
-                // Satisfacción del cliente (simulada por ahora - se podría implementar con un sistema de reseñas)
-                var customerSatisfaction = 4.8; // Valor fijo por ahora
+                var customerSatisfaction = 4.8;
 
                 var metrics = new
                 {
@@ -271,14 +257,13 @@ namespace HydroLink.Controllers
             }
         }
 
-        // GET: api/ventas/debug-product/{id} - Endpoint para debug de inventario por producto
+        // GET: api/ventas/debug-product/{id} 
         [HttpGet("debug-product/{id}")]
         [AllowAnonymous]
         public async Task<IActionResult> DebugProductInventory(int id)
         {
             try
             {
-                // Obtener el producto de HydroLink
                 var producto = await _context.ProductoHydroLink
                     .Include(p => p.ComponentesRequeridos)
                     .ThenInclude(cr => cr.Componente)
@@ -316,20 +301,18 @@ namespace HydroLink.Controllers
             }
         }
 
-        // GET: api/ventas/seed - Endpoint para crear datos de prueba
+        // GET: api/ventas/seed 
         [HttpGet("seed")]
         public async Task<IActionResult> SeedData()
         {
             try
             {
-                // Verificar si ya existen datos
                 var existingVentas = await _context.Venta.AnyAsync();
                 if (existingVentas)
                 {
                     return Ok(new { mensaje = "Los datos de prueba ya existen" });
                 }
 
-                // Crear personas de ejemplo (clientes)
                 var clientes = new List<Cliente>();
                 if (!await _context.Persona.OfType<Cliente>().AnyAsync())
                 {
@@ -350,7 +333,6 @@ namespace HydroLink.Controllers
                     clientes = await _context.Persona.OfType<Cliente>().Take(4).ToListAsync();
                 }
 
-                // Crear productos de ejemplo
                 var productos = new List<ProductoHydroLink>();
                 if (!await _context.ProductoHydroLink.AnyAsync())
                 {
@@ -369,7 +351,6 @@ namespace HydroLink.Controllers
                     productos = await _context.ProductoHydroLink.Take(3).ToListAsync();
                 }
 
-                // Crear ventas de ejemplo
                 var ventas = new List<Venta>
                 {
                     new Venta

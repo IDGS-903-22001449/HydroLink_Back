@@ -47,7 +47,7 @@ namespace HydroLink.Models
         public decimal MontoGanancia { get; set; }
 
         [MaxLength(20)]
-        public string Estado { get; set; } = "PENDIENTE"; // PENDIENTE, ENVIADA, APROBADA, RECHAZADA
+        public string Estado { get; set; } = "PENDIENTE";
 
         public string EspecificacionesEspeciales { get; set; }
 
@@ -59,7 +59,6 @@ namespace HydroLink.Models
 
         public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
 
-        // Relaciones
         public ICollection<CotizacionModularDetalle> Detalles { get; set; }
     }
 }

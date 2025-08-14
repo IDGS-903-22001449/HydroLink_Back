@@ -24,7 +24,6 @@ namespace HydroLink.Models
 
         public string? ActualizadoPor { get; set; }
 
-        // Navegación
         public MateriaPrima MateriaPrima { get; set; }
     }
 }

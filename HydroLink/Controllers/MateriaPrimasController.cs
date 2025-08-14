@@ -60,7 +60,6 @@ namespace HydroLink.Controllers
                 
                 foreach (var mp in materiasPrimas)
                 {
-                    // Crear o encontrar el componente correspondiente
                     var componente = await _context.Componente
                         .FirstOrDefaultAsync(c => c.Nombre == mp.Name && c.UnidadMedida == mp.UnidadMedida);
                     
@@ -79,10 +78,9 @@ namespace HydroLink.Controllers
                         };
                         
                         _context.Componente.Add(componente);
-                        await _context.SaveChangesAsync(); // Guardar para obtener el ID
+                        await _context.SaveChangesAsync(); 
                     }
                     
-                    // Verificar si ya existe la relación ComponenteMateriaPrima
                     var relacionExistente = await _context.ComponenteMateriaPrima
                         .FirstOrDefaultAsync(cm => cm.ComponenteId == componente.Id && cm.MateriaPrimaId == mp.Id);
                     
@@ -92,9 +90,9 @@ namespace HydroLink.Controllers
                         {
                             ComponenteId = componente.Id,
                             MateriaPrimaId = mp.Id,
-                            CantidadNecesaria = 1.0m, // 1 unidad de materia prima = 1 unidad de componente
+                            CantidadNecesaria = 1.0m, 
                             FactorConversion = 1.0m,
-                            PorcentajeMerma = 0.05m, // 5% de merma por defecto
+                            PorcentajeMerma = 0.05m, 
                             EsPrincipal = true,
                             Notas = "Relación 1:1 generada automáticamente",
                             Activo = true,
@@ -122,24 +120,21 @@ namespace HydroLink.Controllers
             }
         }
         
-        // GET: api/MateriaPrimas/as-components - Endpoint para obtener materias primas como si fueran componentes
+        // GET: api/MateriaPrimas/as-components 
         [HttpGet("as-components")]
         public async Task<ActionResult<IEnumerable<ComponenteDto>>> GetMateriaPrimasAsComponents()
         {
             try
             {
-                // Primero, crear componentes automáticamente para cada materia prima que no tenga componente
                 var materiasPrimas = await _context.MateriaPrima.ToListAsync();
                 
                 foreach (var mp in materiasPrimas)
                 {
-                    // Verificar si ya existe un componente para esta materia prima
                     var componenteExistente = await _context.Componente
                         .FirstOrDefaultAsync(c => c.Nombre == mp.Name && c.UnidadMedida == mp.UnidadMedida);
                     
                     if (componenteExistente == null)
                     {
-                        // Crear componente automáticamente
                         var nuevoComponente = new Componente
                         {
                             Nombre = mp.Name,
@@ -158,7 +153,6 @@ namespace HydroLink.Controllers
                 
                 await _context.SaveChangesAsync();
                 
-                // Ahora devolver los componentes que corresponden a materias primas
                 var componentesMateriaPrima = await _context.Componente
                     .Where(c => c.Categoria == "MATERIA_PRIMA" && c.Activo)
                     .Select(c => new ComponenteDto
@@ -224,7 +218,6 @@ namespace HydroLink.Controllers
                 {
                     Name = dto.Nombre,
                     UnidadMedida = dto.UnidadMedida,
-                    // Stock y Costo se inicializan en 0
                     CostoUnitario = 0,
                     Stock = 0
                 };
@@ -340,7 +333,7 @@ namespace HydroLink.Controllers
             }
         }
 
-        // GET: api/MateriaPrimas/debug-inventory - Endpoint para depurar inventario
+        // GET: api/MateriaPrimas/debug-inventory 
         [HttpGet("debug-inventory")]
         [AllowAnonymous]
         public async Task<IActionResult> DebugInventory()
@@ -414,7 +407,7 @@ namespace HydroLink.Controllers
             }
         }
 
-        // POST: api/MateriaPrimas/seed-test-data - Generar datos de prueba completos
+        // POST: api/MateriaPrimas/seed-test-data 
         [HttpPost("seed-test-data")]
         [AllowAnonymous]
         public async Task<IActionResult> SeedTestData()
@@ -423,7 +416,6 @@ namespace HydroLink.Controllers
             {
                 var datosCreados = new List<string>();
 
-                // 1. Crear materias primas básicas si no existen
                 if (!await _context.MateriaPrima.AnyAsync())
                 {
                     var materiasPrimas = new List<MateriaPrima>
@@ -440,11 +432,10 @@ namespace HydroLink.Controllers
                     datosCreados.Add($"Creadas {materiasPrimas.Count} materias primas");
                 }
 
-                // 2. Crear componentes automáticamente
+                
                 await ConfigurarRelacionesAutomaticas();
                 datosCreados.Add("Configuradas relaciones componente-materia prima");
 
-                // 3. Crear clientes si no existen
                 if (!await _context.Persona.OfType<Cliente>().AnyAsync())
                 {
                     var clientes = new List<Cliente>
@@ -459,7 +450,6 @@ namespace HydroLink.Controllers
                     datosCreados.Add($"Creados {clientes.Count} clientes");
                 }
 
-                // 4. Crear productos HydroLink si no existen
                 if (!await _context.ProductoHydroLink.AnyAsync())
                 {
                     var productos = new List<ProductoHydroLink>
@@ -497,7 +487,6 @@ namespace HydroLink.Controllers
                     await _context.SaveChangesAsync();
                     datosCreados.Add($"Creados {productos.Count} productos HydroLink");
 
-                    // 5. Configurar componentes requeridos para cada producto
                     var sensorComponent = await _context.Componente.FirstOrDefaultAsync(c => c.Nombre == "Sensor IoT");
                     var valvulaComponent = await _context.Componente.FirstOrDefaultAsync(c => c.Nombre == "Válvula Electrónica");
                     var bombaComponent = await _context.Componente.FirstOrDefaultAsync(c => c.Nombre == "Bomba de Agua");
@@ -507,14 +496,12 @@ namespace HydroLink.Controllers
 
                     if (sensorComponent != null && valvulaComponent != null)
                     {
-                        // Basic: 2 sensores, 1 válvula
                         componentesRequeridos.AddRange(new[]
                         {
                             new ComponenteRequerido { ProductoHydroLinkId = productos[0].Id, ComponenteId = sensorComponent.Id, Cantidad = 2 },
                             new ComponenteRequerido { ProductoHydroLinkId = productos[0].Id, ComponenteId = valvulaComponent.Id, Cantidad = 1 }
                         });
 
-                        // Pro: 4 sensores, 2 válvulas, 1 panel
                         componentesRequeridos.AddRange(new[]
                         {
                             new ComponenteRequerido { ProductoHydroLinkId = productos[1].Id, ComponenteId = sensorComponent.Id, Cantidad = 4 },
@@ -523,8 +510,7 @@ namespace HydroLink.Controllers
                         
                         if (panelComponent != null)
                             componentesRequeridos.Add(new ComponenteRequerido { ProductoHydroLinkId = productos[1].Id, ComponenteId = panelComponent.Id, Cantidad = 1 });
-
-                        // Industrial: 6 sensores, 4 válvulas, 1 bomba, 1 panel  
+ 
                         componentesRequeridos.AddRange(new[]
                         {
                             new ComponenteRequerido { ProductoHydroLinkId = productos[2].Id, ComponenteId = sensorComponent.Id, Cantidad = 6 },

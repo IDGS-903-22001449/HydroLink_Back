@@ -36,14 +36,10 @@ namespace HydroLink.Models
         [StringLength(200)]
         public string Garantia { get; set; } = string.Empty;
         
-        // Imagen del producto en formato base64
         public string? ImagenBase64 { get; set; }
         
-        // Manual de usuario del producto en formato base64
         public string? ManualUsuarioPdf { get; set; }
 
-        // Navegación
-        //public virtual ICollection<ComponenteRequerido> ComponentesRequeridos { get; set; } = new List<ComponenteRequerido>();
         public ICollection<ComponenteRequerido> ComponentesRequeridos { get; set; }
         public virtual ICollection<Cotizacion> Cotizaciones { get; set; } = new List<Cotizacion>();
     }
@@ -57,16 +53,15 @@ namespace HydroLink.Models
         public int ProductoHydroLinkId { get; set; }
         
         [Required]
-        public int ComponenteId { get; set; }  // Mantener ComponenteId
+        public int ComponenteId { get; set; } 
         
         [Required]
         public decimal Cantidad { get; set; }
         
         [StringLength(200)]
         public string Especificaciones { get; set; } = string.Empty;
-        
-        // Navegación
+
         public virtual ProductoHydroLink ProductoHydroLink { get; set; } = null!;
-        public virtual Componente Componente { get; set; }  // Mantener Componente
+        public virtual Componente Componente { get; set; } 
     }
 }

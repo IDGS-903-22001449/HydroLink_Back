@@ -16,14 +16,14 @@ namespace HydroLink.Models
         public Componente Componente { get; set; }
 
         [Required]
-        public decimal CantidadBase { get; set; } // Cantidad para el primer módulo
+        public decimal CantidadBase { get; set; } 
 
         [Required]
-        public decimal CantidadPorModuloAdicional { get; set; } // Cantidad por cada módulo adicional
+        public decimal CantidadPorModuloAdicional { get; set; } 
 
         [Required]
         [MaxLength(20)]
-        public string TipoComponente { get; set; } // "BASE" o "ADICIONAL"
+        public string TipoComponente { get; set; } 
 
         [MaxLength(500)]
         public string NotasInstalacion { get; set; }

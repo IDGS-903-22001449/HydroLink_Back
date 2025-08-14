@@ -6,7 +6,7 @@ namespace HydroLink.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Solo usuarios autenticados pueden acceder
+    [Authorize]
     public class ProductosPreciosController : ControllerBase
     {
         private readonly IProductoPrecioService _productoPrecioService;

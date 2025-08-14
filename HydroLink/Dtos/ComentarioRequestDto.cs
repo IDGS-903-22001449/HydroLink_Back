@@ -11,7 +11,7 @@ namespace HydroLink.Dtos
     public class ComentarioCreateDtoWithGuid
     {
         [Required]
-        public string UsuarioId { get; set; } // GUID como string
+        public string UsuarioId { get; set; } 
 
         [Required]
         public int ProductoId { get; set; }

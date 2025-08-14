@@ -10,7 +10,7 @@ namespace HydroLink.Dtos
         public decimal ValorTotalInventario { get; set; }
         public int StockMinimo { get; set; }
         public int StockMaximo { get; set; }
-        public string EstadoStock { get; set; } = string.Empty; // Crítico, Bajo, Normal, Alto
+        public string EstadoStock { get; set; } = string.Empty; 
         public DateTime? FechaUltimaCompra { get; set; }
         public decimal? UltimoPrecioCompra { get; set; }
         public List<MovimientoInventarioDto> MovimientosRecientes { get; set; } = new List<MovimientoInventarioDto>();
@@ -21,10 +21,10 @@ namespace HydroLink.Dtos
     {
         public int Id { get; set; }
         public DateTime Fecha { get; set; }
-        public string TipoMovimiento { get; set; } = string.Empty; // Entrada, Salida
+        public string TipoMovimiento { get; set; } = string.Empty;
         public int Cantidad { get; set; }
         public decimal PrecioUnitario { get; set; }
-        public string Concepto { get; set; } = string.Empty; // Compra, Producción, Ajuste
+        public string Concepto { get; set; } = string.Empty; 
         public string? Proveedor { get; set; }
         public int? CompraId { get; set; }
     }
@@ -76,7 +76,7 @@ namespace HydroLink.Dtos
     public class AjusteInventarioDto
     {
         public int MateriaPrimaId { get; set; }
-        public int CantidadAjuste { get; set; } // Positivo para aumentar, negativo para disminuir
+        public int CantidadAjuste { get; set; } 
         public string Motivo { get; set; } = string.Empty;
         public string? Observaciones { get; set; }
     }

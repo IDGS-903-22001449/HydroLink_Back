@@ -140,19 +140,13 @@ namespace HydroLink.Controllers
                     return NotFound("Materia prima no encontrada");
                 }
 
-                // Validar que el ajuste no resulte en stock negativo
                 var nuevoStock = materiaPrima.Stock + ajuste.CantidadAjuste;
                 if (nuevoStock < 0)
                 {
                     return BadRequest($"El ajuste resultaría en stock negativo. Stock actual: {materiaPrima.Stock}");
                 }
 
-                // Actualizar el stock
                 materiaPrima.Stock = nuevoStock;
-
-                // Aquí podrías crear un registro de movimiento de inventario
-                // para mantener un historial de los ajustes
-
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
@@ -174,8 +168,8 @@ namespace HydroLink.Controllers
         [HttpGet("bajo-stock")]
         public async Task<ActionResult<IEnumerable<MaterialBajoStockDto>>> GetMaterialesBajoStock()
         {
-            var stockMinimo = 10; // Valor por defecto
-            var stockCritico = 5; // Valor por defecto
+            var stockMinimo = 10;
+            var stockCritico = 5;
 
             var materialesBajoStock = await _context.MateriaPrima
                 .Where(mp => mp.Stock <= stockMinimo)
@@ -211,8 +205,6 @@ namespace HydroLink.Controllers
             var movimientos = GetMovimientosRecientes(materiaPrima);
             return Ok(movimientos);
         }
-
-        // Métodos auxiliares
         private string GetEstadoStock(int stockActual, int stockMinimo, int stockMaximo)
         {
             if (stockActual <= 5) return "Crítico";
@@ -225,10 +217,8 @@ namespace HydroLink.Controllers
         {
             var movimientos = new List<MovimientoInventarioDto>();
 
-            // Verificar que la colección de compras no sea nula
             if (materiaPrima.Compras?.Any() == true)
             {
-                // Movimientos de entrada por compras
                 foreach (var detalle in materiaPrima.Compras.OrderByDescending(cd => cd.Compra?.Fecha ?? DateTime.MinValue).Take(10))
                 {
                     if (detalle.Compra != null)
@@ -249,9 +239,6 @@ namespace HydroLink.Controllers
                     }
                 }
             }
-
-            // Aquí podrías agregar movimientos de salida por producción
-            // cuando implementes esa funcionalidad
 
             return movimientos.OrderByDescending(m => m.Fecha).ToList();
         }

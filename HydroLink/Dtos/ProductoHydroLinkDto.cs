@@ -22,10 +22,8 @@ namespace HydroLink.Dtos
         public decimal MargenGanancia { get; set; }
         public string? ImagenBase64 { get; set; }
         
-        // Para optimización de rendimiento: indicar si tiene manual sin cargar el contenido
         public bool TieneManual { get; set; }
         
-        // Solo se llena cuando específicamente se solicita el PDF completo
         public string? ManualUsuarioPdf { get; set; }
         
         public List<ComponenteRequeridoDto> ComponentesRequeridos { get; set; } = new List<ComponenteRequeridoDto>();
@@ -43,7 +41,6 @@ namespace HydroLink.Dtos
         [StringLength(50)]
         public string Categoria { get; set; } = string.Empty;
         
-        // Precio es opcional si CalcularPrecioAutomatico es true
         public decimal? Precio { get; set; }
         
         [StringLength(1000)]
@@ -65,11 +62,10 @@ namespace HydroLink.Dtos
         [Required]
         public List<ComponenteRequeridoCreateDto> ComponentesRequeridos { get; set; } = new List<ComponenteRequeridoCreateDto>();
         
-        // Por defecto calculamos automáticamente
         public bool CalcularPrecioAutomatico { get; set; } = true;
         
         [Range(0.01, 1.0, ErrorMessage = "El margen de ganancia debe estar entre 1% y 100%")]
-        public decimal MargenGanancia { get; set; } = 0.30m; // 30% por defecto
+        public decimal MargenGanancia { get; set; } = 0.30m;
     }
 
     public class ComponenteRequeridoDto
@@ -91,7 +87,7 @@ namespace HydroLink.Dtos
         public string Especificaciones { get; set; } = string.Empty;
     }
 
-    // DTO simplificado para mostrar en el home
+    
     public class ProductoHomeDto
     {
         public int Id { get; set; }

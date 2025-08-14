@@ -35,7 +35,6 @@ namespace HydroLink.Controllers
         {
             var query = _context.Componente.AsQueryable();
 
-            // Solo filtra por activos si se especifica explícitamente
             if (soloActivos == true)
                 query = query.Where(c => c.Activo);
 
@@ -177,7 +176,6 @@ namespace HydroLink.Controllers
             if (componente == null)
                 return NotFound();
 
-            // Soft delete - marcar como inactivo en lugar de eliminar
             componente.Activo = false;
             await _context.SaveChangesAsync();
 
@@ -197,13 +195,11 @@ namespace HydroLink.Controllers
             return Ok(categorias);
         }
 
-        // Endpoint temporal para diagnosticar y configurar relaciones sin autenticación
         [HttpPost("configure-relationships")]
         public async Task<IActionResult> ConfigurarRelacionesAutomaticas()
         {
             try
             {
-                // Buscar componentes de categoría MATERIA_PRIMA que no tengan relaciones
                 var componentesMateriaPrima = await _context.Componente
                     .Where(c => c.Categoria == "MATERIA_PRIMA" && c.Activo)
                     .ToListAsync();
@@ -213,13 +209,11 @@ namespace HydroLink.Controllers
                 
                 foreach (var componente in componentesMateriaPrima)
                 {
-                    // Verificar si ya tiene relaciones
                     var tieneRelaciones = await _context.ComponenteMateriaPrima
                         .AnyAsync(cm => cm.ComponenteId == componente.Id && cm.Activo);
                     
                     if (!tieneRelaciones)
                     {
-                        // Buscar materia prima con el mismo nombre
                         var materiaPrima = await _context.MateriaPrima
                             .FirstOrDefaultAsync(mp => mp.Name == componente.Nombre);
                         

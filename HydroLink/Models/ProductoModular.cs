@@ -19,7 +19,7 @@ namespace HydroLink.Models
         public string Descripcion { get; set; }
 
         [Required]
-        public int CapacidadPorModulo { get; set; } = 20; // plantas por módulo
+        public int CapacidadPorModulo { get; set; } = 20; 
 
         [Required]
         public decimal PrecioBaseModulo { get; set; }

@@ -71,13 +71,11 @@ namespace HydroLink.Controllers
 
             try
             {
-                // Verificar si ya existe un cliente con el mismo email
                 var existeCliente = await _context.Persona.OfType<Cliente>()
                     .AnyAsync(c => c.Email == registerDto.Email);
 
                 if (!existeCliente)
                 {
-                    // Crear cliente automáticamente
                     var nombreCompleto = registerDto.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                     var nombre = nombreCompleto.Length > 0 ? nombreCompleto[0] : registerDto.FullName;
                     var apellido = nombreCompleto.Length > 1 ? string.Join(" ", nombreCompleto.Skip(1)) : "";
@@ -100,8 +98,6 @@ namespace HydroLink.Controllers
             }
             catch (Exception ex)
             {
-                // Si hay error al crear el cliente, log el error pero no fallar el registro del usuario
-                // El cliente se puede crear manualmente después si es necesario
                 Console.WriteLine($"Error al crear cliente: {ex.Message}");
             }
 
@@ -341,6 +337,134 @@ namespace HydroLink.Controllers
                 PhoneNumberConfirmed = user.PhoneNumberConfirmed,
                 AccessFailedCount = user.AccessFailedCount
             });
+        }
+
+        [HttpGet("profile")]
+        public async Task<ActionResult<UserProfileDto>> GetUserProfile()
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _userManager.FindByIdAsync(currentUserId!);
+
+            if (user == null)
+            {
+                return NotFound(new AuthResponseDto
+                {
+                    IsSuccess = false,
+                    Message = "User not found"
+                });
+            }
+
+            var cliente = await _context.Persona.OfType<Cliente>()
+                .FirstOrDefaultAsync(c => c.Email == user.Email);
+
+            var userProfile = new UserProfileDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FullName = user.FullName,
+                Roles = (await _userManager.GetRolesAsync(user)).ToArray(),
+                PhoneNumber = user.PhoneNumber,
+                PhoneNumberConfirmed = user.PhoneNumberConfirmed,
+                AccessFailedCount = user.AccessFailedCount
+            };
+
+            if (cliente != null)
+            {
+                userProfile.ClienteId = cliente.Id;
+                userProfile.Nombre = cliente.Nombre;
+                userProfile.Apellido = cliente.Apellido;
+                userProfile.Telefono = cliente.Telefono;
+                userProfile.Direccion = cliente.Direccion;
+                userProfile.Empresa = cliente.Empresa;
+                userProfile.TipoPersona = cliente.TipoPersona;
+                userProfile.FechaRegistro = cliente.FechaRegistro;
+                userProfile.Activo = cliente.Activo;
+            }
+
+            return Ok(userProfile);
+        }
+
+        [HttpPut("profile")]
+        public async Task<ActionResult<AuthResponseDto>> UpdateUserProfile(UpdateProfileDto updateProfileDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _userManager.FindByIdAsync(currentUserId!);
+
+            if (user == null)
+            {
+                return NotFound(new AuthResponseDto
+                {
+                    IsSuccess = false,
+                    Message = "User not found"
+                });
+            }
+
+            try
+            {
+                user.FullName = updateProfileDto.FullName;
+                user.PhoneNumber = updateProfileDto.PhoneNumber;
+                
+                var updateUserResult = await _userManager.UpdateAsync(user);
+                if (!updateUserResult.Succeeded)
+                {
+                    return BadRequest(new AuthResponseDto
+                    {
+                        IsSuccess = false,
+                        Message = "Error updating user information: " + string.Join(", ", updateUserResult.Errors.Select(e => e.Description))
+                    });
+                }
+
+                var cliente = await _context.Persona.OfType<Cliente>()
+                    .FirstOrDefaultAsync(c => c.Email == user.Email);
+
+                if (cliente != null)
+                {
+                    cliente.Nombre = updateProfileDto.Nombre;
+                    cliente.Apellido = updateProfileDto.Apellido;
+                    cliente.Telefono = updateProfileDto.Telefono ?? "";
+                    cliente.Direccion = updateProfileDto.Direccion ?? "";
+                    cliente.Empresa = updateProfileDto.Empresa;
+                    
+                    _context.Persona.Update(cliente);
+                }
+                else
+                {
+                    cliente = new Cliente
+                    {
+                        Nombre = updateProfileDto.Nombre,
+                        Apellido = updateProfileDto.Apellido,
+                        Email = user.Email!,
+                        Telefono = updateProfileDto.Telefono ?? "",
+                        Direccion = updateProfileDto.Direccion ?? "",
+                        Empresa = updateProfileDto.Empresa,
+                        FechaRegistro = DateTime.UtcNow,
+                        Activo = true
+                    };
+                    
+                    _context.Persona.Add(cliente);
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new AuthResponseDto
+                {
+                    IsSuccess = true,
+                    Message = "Profile updated successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new AuthResponseDto
+                {
+                    IsSuccess = false,
+                    Message = "Error updating profile: " + ex.Message
+                });
+            }
         }
 
         [HttpGet]

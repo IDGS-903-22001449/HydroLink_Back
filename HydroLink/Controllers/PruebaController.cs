@@ -33,20 +33,17 @@ namespace HydroLink.Controllers
             _costoPromedioService = costoPromedioService;
         }
 
-        // Endpoint para probar compra sin autenticación
         [HttpPost("test-purchase")]
         public async Task<ActionResult<object>> TestPurchase()
         {
             try
             {
-                // Obtener primer proveedor disponible
                 var proveedor = await _context.Proveedor.FirstOrDefaultAsync();
                 if (proveedor == null)
                 {
                     return BadRequest("No hay proveedores disponibles");
                 }
 
-                // Obtener materia prima Arduino Uno
                 var materiaPrima = await _context.MateriaPrima
                     .FirstOrDefaultAsync(mp => mp.Name.Contains("Arduino Uno"));
                 if (materiaPrima == null)
@@ -57,7 +54,6 @@ namespace HydroLink.Controllers
                 _logger.LogInformation("Estado antes de la compra - Arduino Uno: Stock={Stock}, Costo={CostoUnitario}", 
                     materiaPrima.Stock, materiaPrima.CostoUnitario);
 
-                // Crear compra
                 var compra = new Compra
                 {
                     Fecha = DateTime.UtcNow,
@@ -67,17 +63,15 @@ namespace HydroLink.Controllers
                 _context.Compra.Add(compra);
                 await _context.SaveChangesAsync();
 
-                // Agregar detalle con precio más alto
                 var detalle = new CompraDetalle
                 {
                     CompraId = compra.Id,
                     MateriaPrimaId = materiaPrima.Id,
-                    Cantidad = 5, // Comprar 5 unidades
-                    PrecioUnitario = 1200.00m // Precio MUCHO más alto para probar actualización
+                    Cantidad = 5,
+                    PrecioUnitario = 1200.00m 
                 };
                 compra.Detalles.Add(detalle);
 
-                // Actualizar stock y calcular costo promedio
                 var stockAnterior = materiaPrima.Stock;
                 var costoAnterior = materiaPrima.CostoUnitario;
                 var cantidadNueva = detalle.Cantidad;
@@ -92,13 +86,10 @@ namespace HydroLink.Controllers
                 
                 await _context.SaveChangesAsync();
 
-                // Actualizar precios en productos asociados
                 await _precioActualizacionService.ActualizarPreciosProductosPorMateriaPrimaAsync(
                     materiaPrima.Id, nuevoCostoPromedio);
-
-                // Verificar el nuevo estado después de la compra
                 var materiaPrimaActualizada = await _context.MateriaPrima.FindAsync(materiaPrima.Id);
-                var producto = await _context.ProductoHydroLink.FindAsync(11); // Producto "Prueba costeo"
+                var producto = await _context.ProductoHydroLink.FindAsync(11); 
                 
                 _logger.LogInformation("Estado después de la compra - Arduino Uno: Stock={Stock}, Costo={CostoUnitario}", 
                     materiaPrimaActualizada?.Stock, materiaPrimaActualizada?.CostoUnitario);
@@ -124,13 +115,11 @@ namespace HydroLink.Controllers
             }
         }
 
-        // Endpoint para verificar la cadena de actualización de precios
         [HttpGet("verificar-actualizacion-precios")]
         public async Task<ActionResult<object>> VerificarCadenaActualizacion()
         {
             try
             {
-                // Obtener la materia prima, componente y producto
                 var materiaPrima = await _context.MateriaPrima
                     .FirstOrDefaultAsync(mp => mp.Name.Contains("Arduino Uno"));
                 
@@ -139,7 +128,6 @@ namespace HydroLink.Controllers
                     return BadRequest("No se encontró la materia prima Arduino Uno");
                 }
 
-                // Obtener relaciones de componente-materia prima
                 var relaciones = await _context.ComponenteMateriaPrima
                     .Where(cmp => cmp.MateriaPrimaId == materiaPrima.Id && cmp.Activo)
                     .Include(cmp => cmp.Componente)
@@ -154,7 +142,6 @@ namespace HydroLink.Controllers
                     esPrincipal = r.EsPrincipal
                 }).ToList();
 
-                // Obtener productos que usan estos componentes
                 var componenteIds = relaciones.Select(r => r.ComponenteId).ToList();
                 var productosRelacionados = await _context.ComponenteRequerido
                     .Where(cr => componenteIds.Contains(cr.ComponenteId))
@@ -168,7 +155,6 @@ namespace HydroLink.Controllers
                     })
                     .ToListAsync();
 
-                // Calcular margen de ganancia del producto
                 decimal margen = 0;
                 var producto = await _context.ProductoHydroLink.FindAsync(11);
                 if (producto != null)
@@ -176,7 +162,6 @@ namespace HydroLink.Controllers
                     margen = await _precioActualizacionService.ObtenerMargenGananciaProductoAsync(producto.Id);
                 }
 
-                // Forzar la actualización de precios y ver el resultado
                 decimal nuevoPrecio = 0;
                 if (producto != null)
                 {
@@ -208,7 +193,6 @@ namespace HydroLink.Controllers
             }
         }
 
-        // Endpoint para probar la actualización directa de un precio
         [HttpPost("forzar-actualizacion/{productoId}")]
         public async Task<ActionResult<object>> ForzarActualizacionPrecio(int productoId)
         {

@@ -24,10 +24,10 @@ namespace HydroLink.Models
         public string Categoria { get; set; }
 
         [Required]
-        public decimal CantidadBase { get; set; } // Cantidad para módulo base
+        public decimal CantidadBase { get; set; } 
 
         [Required]
-        public decimal CantidadAdicional { get; set; } // Cantidad para módulos adicionales
+        public decimal CantidadAdicional { get; set; } 
 
         public decimal CantidadTotal => CantidadBase + CantidadAdicional;
 
@@ -45,7 +45,7 @@ namespace HydroLink.Models
         public decimal SubtotalTotal => CantidadTotal * PrecioUnitario;
 
         [MaxLength(20)]
-        public string TipoComponente { get; set; } // "BASE", "ADICIONAL", "COMPARTIDO"
+        public string TipoComponente { get; set; } 
 
         public string Especificaciones { get; set; }
 

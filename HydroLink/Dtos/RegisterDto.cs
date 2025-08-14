@@ -24,7 +24,6 @@ namespace HydroLink.Dtos
         [Description("Roles del usuario (opcional, por defecto será 'User')")]
         public List<string> Roles { get; set; } = new List<string>();
         
-        // Información adicional del cliente
         [StringLength(15, ErrorMessage = "El teléfono no puede exceder 15 caracteres")]
         [Description("Número de teléfono del cliente (opcional)")]
         public string? Telefono { get; set; }

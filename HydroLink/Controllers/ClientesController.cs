@@ -74,7 +74,6 @@ namespace HydroLink.Controllers
             if (createDto == null)
                 return BadRequest("Datos de cliente inválidos");
 
-            // Verificar si ya existe un cliente con el mismo email
             var existeCliente = await _context.Persona.OfType<Cliente>()
                 .AnyAsync(c => c.Email == createDto.Email);
 
@@ -122,7 +121,6 @@ namespace HydroLink.Controllers
             if (cliente == null)
                 return NotFound($"Cliente con ID {id} no encontrado");
 
-            // Verificar si el email ya existe en otro cliente
             var existeOtroCliente = await _context.Persona.OfType<Cliente>()
                 .AnyAsync(c => c.Email == updateDto.Email && c.Id != id);
 
@@ -201,7 +199,6 @@ namespace HydroLink.Controllers
         [Authorize]
         public async Task<IActionResult> GetClienteActual()
         {
-            // Obtener el email del usuario autenticado desde el token JWT
             var userEmail = User.FindFirstValue(ClaimTypes.Email);
             
             if (string.IsNullOrEmpty(userEmail))

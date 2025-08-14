@@ -16,14 +16,11 @@ namespace HydroLink.Models
 
         [Required]
         [MaxLength(50)]
-        public string Categoria { get; set; } // "SENSORES", "RIEGO", "PROTECCION", "MANO_OBRA", "MATERIALES"
-
-        // Precio eliminado - ahora se calcula dinámicamente desde CompraDetalle
-        // public decimal PrecioUnitario { get; set; }
+        public string Categoria { get; set; } 
 
         [Required]
         [MaxLength(20)]
-        public string UnidadMedida { get; set; } // "unidad", "metro", "kit", "hora"
+        public string UnidadMedida { get; set; }
 
         public string Especificaciones { get; set; }
 
@@ -33,7 +30,6 @@ namespace HydroLink.Models
 
         public bool Activo { get; set; } = true;
 
-        // Relaciones
         public ICollection<CotizacionDetalle> CotizacionDetalles { get; set; }
         public ICollection<ComponenteMateriaPrima> MateriaPrimas { get; set; } = new List<ComponenteMateriaPrima>();
     }

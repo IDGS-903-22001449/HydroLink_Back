@@ -4,29 +4,10 @@ namespace HydroLink.Services
 {
     public interface IProductoPrecioService
     {
-        /// <summary>
-        /// Calcula el precio de un producto basado en sus componentes requeridos
-        /// </summary>
         Task<decimal> CalcularPrecioProductoAsync(int productoId, decimal margenGanancia = 0.30m);
-        
-        /// <summary>
-        /// Actualiza automáticamente el precio de un producto
-        /// </summary>
         Task<bool> ActualizarPrecioProductoAsync(int productoId, decimal margenGanancia = 0.30m);
-        
-        /// <summary>
-        /// Actualiza precios de todos los productos activos
-        /// </summary>
         Task<int> ActualizarTodosLosPreciosAsync(decimal margenGanancia = 0.30m);
-        
-        /// <summary>
-        /// Obtiene información detallada del cálculo de precio de un producto
-        /// </summary>
         Task<ProductoPrecioDetalleDto> ObtenerDetalleCalculoPrecioAsync(int productoId, decimal margenGanancia = 0.30m);
-        
-        /// <summary>
-        /// Recalcula precios después de una nueva compra
-        /// </summary>
         Task<int> RecalcularPreciosDespuesDeCompraAsync(List<int> componentesAfectados, decimal margenGanancia = 0.30m);
     }
 
@@ -40,7 +21,7 @@ namespace HydroLink.Services
         public decimal MontoMargen { get; set; }
         public decimal PrecioFinal { get; set; }
         public decimal PrecioAnterior { get; set; }
-        public bool CambioSignificativo { get; set; } // Si el cambio es mayor al 5%
+        public bool CambioSignificativo { get; set; } 
         public DateTime FechaCalculo { get; set; }
         public string Observaciones { get; set; } = string.Empty;
     }

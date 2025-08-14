@@ -21,9 +21,6 @@ namespace HydroLink.Controllers
             _logger = logger;
         }
 
-        /// <summary>
-        /// ULTRA-LIGERO: Solo verifica acceso SIN cargar PDF (para testing)
-        /// </summary>
         [HttpGet("producto/{productoId}/manual/test-light")]
         public async Task<IActionResult> TestLigeroSinPdf(int productoId)
         {
@@ -38,7 +35,6 @@ namespace HydroLink.Controllers
                     return Unauthorized();
                 }
 
-                // Solo verificar permisos - SIN cargar PDF
                 var permisoInicio = DateTime.UtcNow;
                 var tieneAcceso = await _context.ProductoComprado
                     .Where(pc => pc.UserId == userId && pc.ProductoId == productoId)
@@ -47,7 +43,6 @@ namespace HydroLink.Controllers
                         p.Nombre,
                         p.Activo,
                         TienePdf = !string.IsNullOrEmpty(p.ManualUsuarioPdf)
-                        // NO seleccionamos p.ManualUsuarioPdf para no cargarlo
                     })
                     .FirstOrDefaultAsync();
                 
@@ -86,10 +81,7 @@ namespace HydroLink.Controllers
                 return StatusCode(500, "Error interno del servidor");
             }
         }
-        
-        /// <summary>
-        /// STREAMING ULTRA-RÁPIDO: Envía el PDF por chunks para evitar carga masiva
-        /// </summary>
+
         [HttpGet("producto/{productoId}/manual/stream")]
         public async Task<IActionResult> StreamManualProducto(int productoId, [FromQuery] int chunk = 0, [FromQuery] int chunkSize = 100000)
         {
@@ -104,7 +96,6 @@ namespace HydroLink.Controllers
                     return Unauthorized();
                 }
 
-                // Solo en el primer chunk, verificar permisos y obtener metadata
                 if (chunk == 0)
                 {
                     var permisoInicio = DateTime.UtcNow;
@@ -116,7 +107,6 @@ namespace HydroLink.Controllers
                         return Forbid();
                     }
                     
-                    // Obtener metadata del PDF
                     var metadata = await _context.ProductoHydroLink
                         .Where(p => p.Id == productoId && p.Activo)
                         .Select(p => new { 
@@ -135,7 +125,6 @@ namespace HydroLink.Controllers
                         return NotFound("Manual no disponible");
                     }
                     
-                    // Retornar información del streaming
                     var totalChunks = (int)Math.Ceiling((double)metadata.TamanoPdf / chunkSize);
                     
                     return Ok(new
@@ -149,16 +138,14 @@ namespace HydroLink.Controllers
                             estimatedMB = Math.Round(metadata.TamanoPdf * 0.75 / 1024.0 / 1024.0, 2)
                         },
                         chunk = 0,
-                        data = "", // Primer chunk vacío, solo metadata
+                        data = "",
                         isComplete = false
                     });
                 }
                 
-                // Obtener chunk específico del PDF
                 var chunkInicio = DateTime.UtcNow;
                 var startIndex = chunk * chunkSize;
                 
-                // Usar SQL directo para obtener solo el chunk necesario usando SUBSTRING
                 var sql = $@"
                     SELECT 
                         p.Id, 
@@ -218,9 +205,6 @@ namespace HydroLink.Controllers
             }
         }
         
-        /// <summary>
-        /// DIAGNÓSTICO: Mide el rendimiento detallado de cada operación
-        /// </summary>
         [HttpGet("producto/{productoId}/manual/diagnostico")]
         public async Task<IActionResult> DiagnosticarRendimientoManual(int productoId)
         {
@@ -231,7 +215,6 @@ namespace HydroLink.Controllers
             
             try
             {
-                // 1. AUTH CHECK
                 var inicioAuth = DateTime.UtcNow;
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrEmpty(userId))
@@ -241,7 +224,6 @@ namespace HydroLink.Controllers
                 var tiempoAuth = (DateTime.UtcNow - inicioAuth).TotalMilliseconds;
                 diagnostico["auth_ms"] = tiempoAuth;
                 
-                // 2. VERIFICACIÓN DE COMPRA
                 var inicioCompra = DateTime.UtcNow;
                 var haComprado = await _context.ProductoComprado
                     .AnyAsync(pc => pc.UserId == userId && pc.ProductoId == productoId);
@@ -254,7 +236,6 @@ namespace HydroLink.Controllers
                     return Forbid();
                 }
                 
-                // 3. OBTENER SOLO METADATA DEL PRODUCTO
                 var inicioMetadata = DateTime.UtcNow;
                 var metadata = await _context.ProductoHydroLink
                     .Where(p => p.Id == productoId && p.Activo)
@@ -288,7 +269,7 @@ namespace HydroLink.Controllers
                     return NotFound("Manual no disponible");
                 }
                 
-                // 4. OBTENER EL PDF COMPLETO (ESTA ES LA OPERACIÓN COSTOSA)
+                
                 var inicioPdf = DateTime.UtcNow;
                 var pdfCompleto = await _context.ProductoHydroLink
                     .Where(p => p.Id == productoId)
@@ -296,8 +277,7 @@ namespace HydroLink.Controllers
                     .FirstOrDefaultAsync();
                 var tiempoPdf = (DateTime.UtcNow - inicioPdf).TotalMilliseconds;
                 diagnostico["pdf_query_ms"] = tiempoPdf;
-                
-                // 5. SERIALIZACIÓN JSON (también puede ser costosa)
+                 
                 var inicioJson = DateTime.UtcNow;
                 var resultado = new
                 {
@@ -315,7 +295,6 @@ namespace HydroLink.Controllers
                 _logger.LogInformation("🔍 DIAGNÓSTICO COMPLETADO: {TiempoTotal}ms - PDF: {TamanoPdf} chars", 
                     tiempoTotal, metadata.TamanoPdf);
                 
-                // Retornar diagnóstico Y resultado
                 return Ok(new
                 {
                     diagnostico = diagnostico,
@@ -333,9 +312,6 @@ namespace HydroLink.Controllers
             }
         }
         
-        /// <summary>
-        /// Obtiene el manual de usuario de un producto ULTRA-RÁPIDO (optimizado para visualización)
-        /// </summary>
         [HttpGet("producto/{productoId}/manual/fast")]
         public async Task<IActionResult> ObtenerManualProductoFast(int productoId)
         {
@@ -350,7 +326,6 @@ namespace HydroLink.Controllers
                     return Unauthorized();
                 }
 
-                // ULTRA-OPTIMIZADO: Una sola consulta sin Include para máximo rendimiento
                 var query = from pc in _context.ProductoComprado
                            join p in _context.ProductoHydroLink on pc.ProductoId equals p.Id
                            where pc.UserId == userId && pc.ProductoId == productoId && p.Activo
@@ -394,9 +369,6 @@ namespace HydroLink.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene el manual de usuario de un producto si el usuario lo ha comprado
-        /// </summary>
         [HttpGet("producto/{productoId}/manual")]
         public async Task<IActionResult> ObtenerManualProducto(int productoId)
         {
@@ -413,7 +385,6 @@ namespace HydroLink.Controllers
 
                 _logger.LogInformation("Usuario {UserId} solicitando manual de producto {ProductoId}", userId, productoId);
 
-                // OPTIMIZACIÓN: Verificar compra Y obtener datos del producto en UNA SOLA CONSULTA
                 var productoConCompra = await _context.ProductoComprado
                     .Where(pc => pc.UserId == userId && pc.ProductoId == productoId)
                     .Include(pc => pc.Producto)
@@ -469,9 +440,6 @@ namespace HydroLink.Controllers
             }
         }
 
-        /// <summary>
-        /// Descarga directamente el PDF del manual de usuario
-        /// </summary>
         [HttpGet("producto/{productoId}/manual/download")]
         public async Task<IActionResult> DescargarManualProducto(int productoId)
         {
@@ -483,7 +451,6 @@ namespace HydroLink.Controllers
                     return Unauthorized("Usuario no autenticado");
                 }
 
-                // Verificar si el usuario ha comprado este producto
                 var haComprado = await _context.ProductoComprado
                     .AnyAsync(pc => pc.UserId == userId && pc.ProductoId == productoId);
 
@@ -492,7 +459,6 @@ namespace HydroLink.Controllers
                     return Forbid("No tienes acceso al manual de este producto. Debes comprarlo primero.");
                 }
 
-                // Obtener el producto con su manual
                 var producto = await _context.ProductoHydroLink
                     .Where(p => p.Id == productoId && p.Activo)
                     .Select(p => new { p.Id, p.Nombre, p.ManualUsuarioPdf })
@@ -508,7 +474,6 @@ namespace HydroLink.Controllers
                     return NotFound("Este producto no tiene manual de usuario disponible");
                 }
 
-                // Convertir base64 a bytes
                 byte[] pdfBytes;
                 try
                 {
@@ -520,10 +485,8 @@ namespace HydroLink.Controllers
                     return StatusCode(500, "Error en el formato del archivo PDF");
                 }
 
-                // Generar nombre de archivo seguro
                 var fileName = $"Manual_{producto.Nombre.Replace(" ", "_").Replace("/", "_").Replace("\\", "_")}.pdf";
                 
-                // Retornar el archivo PDF
                 return File(pdfBytes, "application/pdf", fileName);
             }
             catch (Exception ex)
@@ -533,9 +496,6 @@ namespace HydroLink.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene metadata del manual sin el contenido completo
-        /// </summary>
         [HttpGet("producto/{productoId}/manual/info")]
         public async Task<IActionResult> ObtenerInfoManualProducto(int productoId)
         {
@@ -547,7 +507,6 @@ namespace HydroLink.Controllers
                     return Unauthorized("Usuario no autenticado");
                 }
 
-                // Verificar si el usuario ha comprado este producto
                 var haComprado = await _context.ProductoComprado
                     .AnyAsync(pc => pc.UserId == userId && pc.ProductoId == productoId);
 
@@ -556,7 +515,6 @@ namespace HydroLink.Controllers
                     return Forbid("No tienes acceso al manual de este producto. Debes comprarlo primero.");
                 }
 
-                // Obtener información del producto y manual
                 var producto = await _context.ProductoHydroLink
                     .Where(p => p.Id == productoId && p.Activo)
                     .Select(p => new { 
@@ -577,7 +535,7 @@ namespace HydroLink.Controllers
                     productoId = producto.Id,
                     nombreProducto = producto.Nombre,
                     tieneManual = producto.TieneManual,
-                    tamanoEstimado = producto.TamanoManual > 0 ? (producto.TamanoManual * 3 / 4) : 0, // Aproximación del tamaño real
+                    tamanoEstimado = producto.TamanoManual > 0 ? (producto.TamanoManual * 3 / 4) : 0,  
                     fechaConsulta = DateTime.UtcNow
                 });
             }
@@ -588,9 +546,6 @@ namespace HydroLink.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene todos los productos comprados por el usuario actual con sus manuales
-        /// </summary>
         [HttpGet("mis-productos")]
         public async Task<IActionResult> ObtenerMisProductos()
         {
@@ -636,10 +591,6 @@ namespace HydroLink.Controllers
             }
         }
 
-        /// <summary>
-        /// Registra la compra de un producto por parte de un usuario
-        /// (Este método sería llamado desde el proceso de venta/cotización)
-        /// </summary>
         [HttpPost("registrar-compra")]
         public async Task<IActionResult> RegistrarCompraProducto([FromBody] RegistrarCompraDto dto)
         {
@@ -651,14 +602,12 @@ namespace HydroLink.Controllers
                     return Unauthorized("Usuario no autenticado");
                 }
 
-                // Verificar que el producto existe
                 var producto = await _context.ProductoHydroLink.FindAsync(dto.ProductoId);
                 if (producto == null)
                 {
                     return NotFound("Producto no encontrado");
                 }
 
-                // Verificar si ya existe una compra registrada para evitar duplicados
                 var compraExistente = await _context.ProductoComprado
                     .FirstOrDefaultAsync(pc => pc.UserId == userId && pc.ProductoId == dto.ProductoId);
 
@@ -667,7 +616,6 @@ namespace HydroLink.Controllers
                     return Ok(new { mensaje = "La compra ya estaba registrada", compraId = compraExistente.Id });
                 }
 
-                // Crear nuevo registro de compra
                 var nuevaCompra = new ProductoComprado
                 {
                     UserId = userId,

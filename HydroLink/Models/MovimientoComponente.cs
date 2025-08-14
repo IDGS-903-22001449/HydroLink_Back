@@ -15,7 +15,7 @@ namespace HydroLink.Models
 
         [Required]
         [StringLength(20)]
-        public string TipoMovimiento { get; set; } = string.Empty; // ENTRADA, SALIDA
+        public string TipoMovimiento { get; set; } = string.Empty; 
 
         [Required]
         public decimal Cantidad { get; set; }
@@ -34,7 +34,6 @@ namespace HydroLink.Models
         [StringLength(500)]
         public string Observaciones { get; set; } = string.Empty;
 
-        // Navegación
         public virtual Componente Componente { get; set; } = null!;
         public virtual Venta? Venta { get; set; }
         public virtual Compra? Compra { get; set; }
